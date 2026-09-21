@@ -1,0 +1,143 @@
+{
+  "national_n": 10071755,
+  "majority_pct": 29.005,
+  "cities": [
+    {
+      "name": "Z\u00fcrich",
+      "subtitle": "Z\u00fcrich, Switzerland",
+      "n_roofs": 238191,
+      "radius_m": 2200,
+      "counts": {
+        "1": 65051,
+        "2": 47121,
+        "3": 70768,
+        "4": 53920,
+        "5": 1331
+      },
+      "pct_class5": 0.5587952525494246,
+      "pct_class4plus": 23.196090532387874,
+      "mean_slope": 30.453018795840315,
+      "median_area": 2.30510505287431
+    },
+    {
+      "name": "Gen\u00e8ve",
+      "subtitle": "Geneva, Switzerland",
+      "n_roofs": 38532,
+      "radius_m": 2200,
+      "counts": {
+        "1": 7999,
+        "2": 6704,
+        "3": 8077,
+        "4": 11853,
+        "5": 3899
+      },
+      "pct_class5": 10.118862244368318,
+      "pct_class4plus": 40.88030727706841,
+      "mean_slope": 24.46130488944254,
+      "median_area": 42.350234766325556
+    },
+    {
+      "name": "Bern",
+      "subtitle": "Bern, Switzerland",
+      "n_roofs": 78748,
+      "radius_m": 2200,
+      "counts": {
+        "1": 21323,
+        "2": 16749,
+        "3": 17366,
+        "4": 18235,
+        "5": 5075
+      },
+      "pct_class5": 6.444608117031543,
+      "pct_class4plus": 29.600751765124194,
+      "mean_slope": 34.08550058414182,
+      "median_area": 17.92286078976705
+    },
+    {
+      "name": "Basel",
+      "subtitle": "Basel, Switzerland",
+      "n_roofs": 57090,
+      "radius_m": 2200,
+      "counts": {
+        "1": 14898,
+        "2": 13099,
+        "3": 16424,
+        "4": 12081,
+        "5": 588
+      },
+      "pct_class5": 1.0299527062532843,
+      "pct_class4plus": 22.191276931161322,
+      "mean_slope": 27.82699246803293,
+      "median_area": 39.276848977620745
+    },
+    {
+      "name": "Lausanne",
+      "subtitle": "Lausanne, Switzerland",
+      "n_roofs": 49550,
+      "radius_m": 2200,
+      "counts": {
+        "1": 8495,
+        "2": 8201,
+        "3": 10011,
+        "4": 13289,
+        "5": 9554
+      },
+      "pct_class5": 19.281533804238144,
+      "pct_class4plus": 46.10090817356206,
+      "mean_slope": 28.78542885973764,
+      "median_area": 31.7444406139245
+    },
+    {
+      "name": "Lugano",
+      "subtitle": "Ticino, Switzerland",
+      "n_roofs": 33683,
+      "radius_m": 2200,
+      "counts": {
+        "1": 2204,
+        "2": 4524,
+        "3": 8793,
+        "4": 11864,
+        "5": 6298
+      },
+      "pct_class5": 18.69785945432414,
+      "pct_class4plus": 53.92037526348603,
+      "mean_slope": 16.390196835198765,
+      "median_area": 34.4178452382495
+    },
+    {
+      "name": "Luzern",
+      "subtitle": "Lucerne, Switzerland",
+      "n_roofs": 32069,
+      "radius_m": 2000,
+      "counts": {
+        "1": 8433,
+        "2": 8041,
+        "3": 10763,
+        "4": 4832,
+        "5": 0
+      },
+      "pct_class5": 0.0,
+      "pct_class4plus": 15.067510680096042,
+      "mean_slope": 29.17830303408276,
+      "median_area": 32.1752728549051
+    },
+    {
+      "name": "Sion",
+      "subtitle": "Valais, Switzerland",
+      "n_roofs": 18968,
+      "radius_m": 2200,
+      "counts": {
+        "1": 922,
+        "2": 2096,
+        "3": 3783,
+        "4": 6409,
+        "5": 5758
+      },
+      "pct_class5": 30.356389708983553,
+      "pct_class4plus": 64.14487557992408,
+      "mean_slope": 19.799926191480388,
+      "median_area": 42.115913254874954
+    }
+  ],
+  "source": "BFE Sonnendach.ch generalized FileGDB, inspected 2026-09-21"
+}

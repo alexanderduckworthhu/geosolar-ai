@@ -1,0 +1,16 @@
+# Pinned from the training/API venv (Python 3.13, macOS).
+fastapi==0.141.1
+uvicorn==0.53.0
+pydantic==2.13.5
+scikit-learn==1.9.1
+joblib==1.6.0
+pandas==3.0.6
+numpy==2.5.3
+pyogrio==0.13.0
+pyproj==3.8.0
+# visuals (maps / GIFs)
+matplotlib==3.11.2
+pillow==12.3.0
+imageio==2.37.4
+imageio-ffmpeg==0.6.0
+shapely==2.1.2

@@ -1,0 +1,528 @@
+{
+  "n_sample": 250000,
+  "n_unassigned": 1635,
+  "seed": 42,
+  "boundary": "swissBOUNDARIES3D 2026 tlm_kantonsgebiet",
+  "cantons": [
+    {
+      "bfs": 1,
+      "code": "ZH",
+      "name": "Z\u00fcrich",
+      "region": "Zurich",
+      "n_roofs_sample": 31593,
+      "counts": {
+        "1": 6536,
+        "2": 6894,
+        "3": 9345,
+        "4": 7855,
+        "5": 963
+      },
+      "mean_mstrahlung": 1019.8780109517932,
+      "median_mstrahlung": 1062.0,
+      "pct_class4plus": 27.91124616212452,
+      "pct_class5": 3.0481435761086315,
+      "mean_slope": 25.925711391763997,
+      "median_area": 31.2007867880006
+    },
+    {
+      "bfs": 2,
+      "code": "BE",
+      "name": "Bern",
+      "region": "Espace Mittelland",
+      "n_roofs_sample": 37968,
+      "counts": {
+        "1": 6228,
+        "2": 7926,
+        "3": 10637,
+        "4": 9988,
+        "5": 3189
+      },
+      "mean_mstrahlung": 1065.1434892541088,
+      "median_mstrahlung": 1095.0,
+      "pct_class4plus": 34.70554150863885,
+      "pct_class5": 8.399178255372945,
+      "mean_slope": 27.636167298777917,
+      "median_area": 34.9412502296867
+    },
+    {
+      "bfs": 3,
+      "code": "LU",
+      "name": "Luzern",
+      "region": "Central Switzerland",
+      "n_roofs_sample": 12423,
+      "counts": {
+        "1": 1988,
+        "2": 2750,
+        "3": 3981,
+        "4": 3280,
+        "5": 424
+      },
+      "mean_mstrahlung": 1048.4750865330436,
+      "median_mstrahlung": 1085.0,
+      "pct_class4plus": 29.815664493278597,
+      "pct_class5": 3.4130242292521937,
+      "mean_slope": 25.2952587941721,
+      "median_area": 35.5507861599906
+    },
+    {
+      "bfs": 4,
+      "code": "UR",
+      "name": "Uri",
+      "region": "Central Switzerland",
+      "n_roofs_sample": 1421,
+      "counts": {
+        "1": 280,
+        "2": 424,
+        "3": 446,
+        "4": 234,
+        "5": 37
+      },
+      "mean_mstrahlung": 994.4257565095004,
+      "median_mstrahlung": 1001.0,
+      "pct_class4plus": 19.071076706544687,
+      "pct_class5": 2.6038001407459537,
+      "mean_slope": 25.04292751583392,
+      "median_area": 43.9429945979459
+    },
+    {
+      "bfs": 5,
+      "code": "SZ",
+      "name": "Schwyz",
+      "region": "Central Switzerland",
+      "n_roofs_sample": 4770,
+      "counts": {
+        "1": 960,
+        "2": 1217,
+        "3": 1538,
+        "4": 969,
+        "5": 86
+      },
+      "mean_mstrahlung": 1004.0522012578616,
+      "median_mstrahlung": 1027.0,
+      "pct_class4plus": 22.11740041928721,
+      "pct_class5": 1.8029350104821802,
+      "mean_slope": 23.940880503144655,
+      "median_area": 39.726660384770454
+    },
+    {
+      "bfs": 6,
+      "code": "OW",
+      "name": "Obwalden",
+      "region": "Central Switzerland",
+      "n_roofs_sample": 1482,
+      "counts": {
+        "1": 251,
+        "2": 438,
+        "3": 482,
+        "4": 297,
+        "5": 14
+      },
+      "mean_mstrahlung": 1010.9581646423752,
+      "median_mstrahlung": 1021.0,
+      "pct_class4plus": 20.98515519568151,
+      "pct_class5": 0.9446693657219973,
+      "mean_slope": 25.53306342780027,
+      "median_area": 45.89971383800375
+    },
+    {
+      "bfs": 7,
+      "code": "NW",
+      "name": "Nidwalden",
+      "region": "Central Switzerland",
+      "n_roofs_sample": 1221,
+      "counts": {
+        "1": 245,
+        "2": 399,
+        "3": 442,
+        "4": 134,
+        "5": 1
+      },
+      "mean_mstrahlung": 957.9557739557739,
+      "median_mstrahlung": 982.0,
+      "pct_class4plus": 11.056511056511056,
+      "pct_class5": 0.0819000819000819,
+      "mean_slope": 25.875511875511876,
+      "median_area": 45.810678394582
+    },
+    {
+      "bfs": 8,
+      "code": "GL",
+      "name": "Glarus",
+      "region": "Eastern Switzerland",
+      "n_roofs_sample": 1617,
+      "counts": {
+        "1": 400,
+        "2": 493,
+        "3": 496,
+        "4": 220,
+        "5": 8
+      },
+      "mean_mstrahlung": 949.6790352504638,
+      "median_mstrahlung": 963.0,
+      "pct_class4plus": 14.100185528756958,
+      "pct_class5": 0.49474335188620905,
+      "mean_slope": 23.138528138528137,
+      "median_area": 45.6507138664273
+    },
+    {
+      "bfs": 9,
+      "code": "ZG",
+      "name": "Zug",
+      "region": "Central Switzerland",
+      "n_roofs_sample": 2210,
+      "counts": {
+        "1": 396,
+        "2": 449,
+        "3": 773,
+        "4": 501,
+        "5": 91
+      },
+      "mean_mstrahlung": 1036.3285067873303,
+      "median_mstrahlung": 1081.0,
+      "pct_class4plus": 26.787330316742082,
+      "pct_class5": 4.117647058823529,
+      "mean_slope": 23.295475113122173,
+      "median_area": 42.275047416349395
+    },
+    {
+      "bfs": 10,
+      "code": "FR",
+      "name": "Fribourg",
+      "region": "Espace Mittelland",
+      "n_roofs_sample": 10580,
+      "counts": {
+        "1": 1323,
+        "2": 2021,
+        "3": 2603,
+        "4": 2757,
+        "5": 1876
+      },
+      "mean_mstrahlung": 1126.0159735349716,
+      "median_mstrahlung": 1149.0,
+      "pct_class4plus": 43.790170132325144,
+      "pct_class5": 17.73156899810964,
+      "mean_slope": 26.341115311909263,
+      "median_area": 40.74602742172365
+    },
+    {
+      "bfs": 11,
+      "code": "SO",
+      "name": "Solothurn",
+      "region": "Espace Mittelland",
+      "n_roofs_sample": 8884,
+      "counts": {
+        "1": 1369,
+        "2": 1873,
+        "3": 2684,
+        "4": 2482,
+        "5": 476
+      },
+      "mean_mstrahlung": 1065.5759792886088,
+      "median_mstrahlung": 1100.0,
+      "pct_class4plus": 33.29581269698334,
+      "pct_class5": 5.357946870778928,
+      "mean_slope": 27.377645204862674,
+      "median_area": 39.890700371689306
+    },
+    {
+      "bfs": 12,
+      "code": "BS",
+      "name": "Basel-Stadt",
+      "region": "Northwestern CH",
+      "n_roofs_sample": 2160,
+      "counts": {
+        "1": 503,
+        "2": 487,
+        "3": 669,
+        "4": 467,
+        "5": 34
+      },
+      "mean_mstrahlung": 995.5314814814815,
+      "median_mstrahlung": 1036.5,
+      "pct_class4plus": 23.194444444444443,
+      "pct_class5": 1.5740740740740742,
+      "mean_slope": 26.696296296296296,
+      "median_area": 39.6660996879567
+    },
+    {
+      "bfs": 13,
+      "code": "BL",
+      "name": "Basel-Landschaft",
+      "region": "Northwestern CH",
+      "n_roofs_sample": 8228,
+      "counts": {
+        "1": 1259,
+        "2": 1762,
+        "3": 2890,
+        "4": 2130,
+        "5": 187
+      },
+      "mean_mstrahlung": 1052.0463052989792,
+      "median_mstrahlung": 1097.0,
+      "pct_class4plus": 28.15994166261546,
+      "pct_class5": 2.272727272727273,
+      "mean_slope": 25.23031113271755,
+      "median_area": 31.9749498046185
+    },
+    {
+      "bfs": 14,
+      "code": "SH",
+      "name": "Schaffhausen",
+      "region": "Eastern Switzerland",
+      "n_roofs_sample": 2554,
+      "counts": {
+        "1": 459,
+        "2": 585,
+        "3": 734,
+        "4": 658,
+        "5": 118
+      },
+      "mean_mstrahlung": 1044.652310101801,
+      "median_mstrahlung": 1074.0,
+      "pct_class4plus": 30.38371182458888,
+      "pct_class5": 4.620203602192639,
+      "mean_slope": 25.95693030540329,
+      "median_area": 43.4375494670534
+    },
+    {
+      "bfs": 15,
+      "code": "AR",
+      "name": "Appenzell Ausserrhoden",
+      "region": "Eastern Switzerland",
+      "n_roofs_sample": 2467,
+      "counts": {
+        "1": 486,
+        "2": 646,
+        "3": 640,
+        "4": 603,
+        "5": 92
+      },
+      "mean_mstrahlung": 1024.9813538710985,
+      "median_mstrahlung": 1038.0,
+      "pct_class4plus": 28.17186866639643,
+      "pct_class5": 3.7292257802999593,
+      "mean_slope": 28.449533846777463,
+      "median_area": 39.2242507358616
+    },
+    {
+      "bfs": 16,
+      "code": "AI",
+      "name": "Appenzell Innerrhoden",
+      "region": "Eastern Switzerland",
+      "n_roofs_sample": 915,
+      "counts": {
+        "1": 193,
+        "2": 237,
+        "3": 246,
+        "4": 207,
+        "5": 32
+      },
+      "mean_mstrahlung": 1014.151912568306,
+      "median_mstrahlung": 1021.0,
+      "pct_class4plus": 26.120218579234972,
+      "pct_class5": 3.4972677595628414,
+      "mean_slope": 28.770491803278688,
+      "median_area": 43.3623605985314
+    },
+    {
+      "bfs": 17,
+      "code": "SG",
+      "name": "St. Gallen",
+      "region": "Eastern Switzerland",
+      "n_roofs_sample": 16315,
+      "counts": {
+        "1": 2968,
+        "2": 3835,
+        "3": 4992,
+        "4": 3965,
+        "5": 555
+      },
+      "mean_mstrahlung": 1033.6783328225558,
+      "median_mstrahlung": 1065.0,
+      "pct_class4plus": 27.704566349984677,
+      "pct_class5": 3.401777505363163,
+      "mean_slope": 25.2,
+      "median_area": 40.1802043245555
+    },
+    {
+      "bfs": 18,
+      "code": "GR",
+      "name": "Graub\u00fcnden",
+      "region": "Eastern Switzerland",
+      "n_roofs_sample": 9370,
+      "counts": {
+        "1": 842,
+        "2": 2011,
+        "3": 2724,
+        "4": 2614,
+        "5": 1179
+      },
+      "mean_mstrahlung": 1121.0311632870864,
+      "median_mstrahlung": 1139.0,
+      "pct_class4plus": 40.48025613660619,
+      "pct_class5": 12.582710779082177,
+      "mean_slope": 22.212166488794022,
+      "median_area": 44.50740848400025
+    },
+    {
+      "bfs": 19,
+      "code": "AG",
+      "name": "Aargau",
+      "region": "Northwestern CH",
+      "n_roofs_sample": 19163,
+      "counts": {
+        "1": 2673,
+        "2": 4186,
+        "3": 6188,
+        "4": 5555,
+        "5": 561
+      },
+      "mean_mstrahlung": 1064.2018473099201,
+      "median_mstrahlung": 1100.0,
+      "pct_class4plus": 31.915670823983717,
+      "pct_class5": 2.927516568386996,
+      "mean_slope": 25.03397171632834,
+      "median_area": 42.0083876881648
+    },
+    {
+      "bfs": 20,
+      "code": "TG",
+      "name": "Thurgau",
+      "region": "Eastern Switzerland",
+      "n_roofs_sample": 9715,
+      "counts": {
+        "1": 1577,
+        "2": 2077,
+        "3": 2982,
+        "4": 2653,
+        "5": 426
+      },
+      "mean_mstrahlung": 1058.4259392691713,
+      "median_mstrahlung": 1090.0,
+      "pct_class4plus": 31.693257848687598,
+      "pct_class5": 4.384971693257849,
+      "mean_slope": 26.69613998970664,
+      "median_area": 42.7254111750611
+    },
+    {
+      "bfs": 21,
+      "code": "TI",
+      "name": "Ticino",
+      "region": "Ticino",
+      "n_roofs_sample": 15584,
+      "counts": {
+        "1": 1532,
+        "2": 2700,
+        "3": 4449,
+        "4": 4506,
+        "5": 2397
+      },
+      "mean_mstrahlung": 1138.4383341889118,
+      "median_mstrahlung": 1160.0,
+      "pct_class4plus": 44.29543121149897,
+      "pct_class5": 15.381160164271048,
+      "mean_slope": 20.286190965092402,
+      "median_area": 29.855444923929397
+    },
+    {
+      "bfs": 22,
+      "code": "VD",
+      "name": "Vaud",
+      "region": "Lake Geneva",
+      "n_roofs_sample": 20004,
+      "counts": {
+        "1": 2438,
+        "2": 4159,
+        "3": 4560,
+        "4": 4910,
+        "5": 3937
+      },
+      "mean_mstrahlung": 1129.1457208558288,
+      "median_mstrahlung": 1149.0,
+      "pct_class4plus": 44.22615476904619,
+      "pct_class5": 19.68106378724255,
+      "mean_slope": 27.01614677064587,
+      "median_area": 37.341078353217895
+    },
+    {
+      "bfs": 23,
+      "code": "VS",
+      "name": "Valais",
+      "region": "Lake Geneva",
+      "n_roofs_sample": 13810,
+      "counts": {
+        "1": 670,
+        "2": 2071,
+        "3": 3781,
+        "4": 4147,
+        "5": 3141
+      },
+      "mean_mstrahlung": 1204.9550325850832,
+      "median_mstrahlung": 1218.0,
+      "pct_class4plus": 52.77335264301231,
+      "pct_class5": 22.74438812454743,
+      "mean_slope": 21.33482983345402,
+      "median_area": 38.3542393619699
+    },
+    {
+      "bfs": 24,
+      "code": "NE",
+      "name": "Neuch\u00e2tel",
+      "region": "Espace Mittelland",
+      "n_roofs_sample": 4495,
+      "counts": {
+        "1": 750,
+        "2": 957,
+        "3": 1091,
+        "4": 1227,
+        "5": 470
+      },
+      "mean_mstrahlung": 1070.386874304783,
+      "median_mstrahlung": 1095.0,
+      "pct_class4plus": 37.75305895439377,
+      "pct_class5": 10.456062291434927,
+      "mean_slope": 26.56040044493882,
+      "median_area": 35.8845149727698
+    },
+    {
+      "bfs": 25,
+      "code": "GE",
+      "name": "Gen\u00e8ve",
+      "region": "Lake Geneva",
+      "n_roofs_sample": 5614,
+      "counts": {
+        "1": 853,
+        "2": 1053,
+        "3": 1365,
+        "4": 1563,
+        "5": 780
+      },
+      "mean_mstrahlung": 1095.0584253651584,
+      "median_mstrahlung": 1133.0,
+      "pct_class4plus": 41.73494834342715,
+      "pct_class5": 13.893836836480228,
+      "mean_slope": 23.188457427858925,
+      "median_area": 35.69151993358625
+    },
+    {
+      "bfs": 26,
+      "code": "JU",
+      "name": "Jura",
+      "region": "Espace Mittelland",
+      "n_roofs_sample": 3802,
+      "counts": {
+        "1": 469,
+        "2": 823,
+        "3": 1309,
+        "4": 1026,
+        "5": 175
+      },
+      "mean_mstrahlung": 1073.513150973172,
+      "median_mstrahlung": 1099.0,
+      "pct_class4plus": 31.58863755917938,
+      "pct_class5": 4.602840610205155,
+      "mean_slope": 25.290899526564967,
+      "median_area": 41.572498122250096
+    }
+  ]
+}

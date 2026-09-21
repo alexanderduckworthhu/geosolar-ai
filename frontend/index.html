@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GeoSolar AI — Swiss rooftop solar potential</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <p class="kicker">Sonnendach.ch · BFE / SFOE</p>
+      <h1>GeoSolar AI</h1>
+      <p class="lede">
+        Predict a Swiss roof’s official solar suitability class from location and geometry.
+        No radiation field — that would leak the answer.
+      </p>
+    </header>
+
+    <main class="layout">
+      <section class="map-panel">
+        <div id="map" role="application" aria-label="Map of Switzerland"></div>
+        <p class="hint">Click a rooftop. Coordinates are WGS84.</p>
+      </section>
+
+      <section class="form-panel">
+        <form id="predict-form">
+          <label>
+            Latitude
+            <input id="latitude" name="latitude" type="number" step="any" required />
+          </label>
+          <label>
+            Longitude
+            <input id="longitude" name="longitude" type="number" step="any" required />
+          </label>
+          <label>
+            Roof area (m²)
+            <input id="roof_area_m2" name="roof_area_m2" type="number" step="any" required />
+          </label>
+          <label>
+            Slope (°)
+            <input id="slope_deg" name="slope_deg" type="number" step="1" required />
+            <span class="hint">0 = flat, 89 = nearly vertical</span>
+          </label>
+          <label>
+            Aspect (°)
+            <input id="aspect_deg" name="aspect_deg" type="range" min="-180" max="180" step="1" value="0" />
+            <span class="aspect-readout">
+              <span>N −180</span>
+              <strong id="aspect-value">0° south</strong>
+              <span>N +180</span>
+            </span>
+          </label>
+          <button type="submit">Predict class</button>
+          <button type="button" id="example-btn" class="ghost">Load a real test roof</button>
+        </form>
+
+        <div id="result" class="result" hidden>
+          <p class="result-kicker">Predicted KLASSE</p>
+          <p id="result-class" class="result-class"></p>
+          <p id="result-label" class="result-label"></p>
+          <div id="proba" class="proba"></div>
+          <p class="note">
+            Shading from neighbouring buildings is not in these features. Official
+            Sonnendach.ch classes include it; this model cannot.
+          </p>
+        </div>
+        <p id="error" class="error" hidden></p>
+      </section>
+    </main>
+
+    <footer>
+      <a href="/docs">API docs</a>
+      · FastAPI loads a saved pipeline only
+      · DIT323
+    </footer>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="app.js"></script>
+  </body>
+</html>
