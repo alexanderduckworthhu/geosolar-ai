@@ -1,0 +1,42 @@
+{
+  "source_url": "https://data.geo.admin.ch/ch.bfe.solarenergie-eignung-daecher/solarenergie-eignung-daecher/solarenergie-eignung-daecher_2056_generalized.gdb.zip",
+  "source_zip": "data/raw/solarenergie-eignung-daecher_2056_generalized.gdb.zip",
+  "source_sha256": "d5cabc1e55ac7b470e8a5905df866c915e464bdcb7d05f395aac3df11100afec",
+  "layer": "SOLKAT_CH_DACH",
+  "crs_source": "EPSG:2056",
+  "crs_output": "EPSG:4326",
+  "coordinate_rule": "parse MultiPoint in EPSG:2056, then pyproj always_xy=True to EPSG:4326",
+  "n_population": 10071755,
+  "population_by_klasse": {
+    "1": 1540592,
+    "2": 2132008,
+    "3": 2921319,
+    "4": 2625455,
+    "5": 852381
+  },
+  "n_sample": 100000,
+  "n_by_klasse": {
+    "1": 15296,
+    "2": 21168,
+    "3": 29005,
+    "4": 26068,
+    "5": 8463
+  },
+  "target_n_k": {
+    "1": 15296,
+    "2": 21168,
+    "3": 29005,
+    "4": 26068,
+    "5": 8463
+  },
+  "random_state": 42,
+  "columns": [
+    "latitude",
+    "longitude",
+    "roof_area_m2",
+    "slope_deg",
+    "aspect_deg",
+    "klasse"
+  ],
+  "output_csv": "data/processed/roofs_sample.csv"
+}

@@ -8,9 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
 
 
 class PredictResponse(BaseModel):
-    klasse: int = Field(..., ge=1, le=5)
-    label: str
-    probabilities: dict[str, float]
+    klasse: int = Field(..., ge=1, le=5, description="Official Sonnendach KLASSE 1–5")
+    label: str = Field(..., description="Official German label plus English")
+    probabilities: dict[str, float] = Field(
+        ..., description="predict_proba for classes 1–5, keys are class codes as strings"
+    )
     model_note: str = (
         "Predicted from roof geometry and location only. "
         "Does not include local shading (trees, neighbouring buildings)."
@@ -24,20 +26,36 @@ class HealthResponse(BaseModel):
     n_features: int | None = None
 
 
+class ApiInfo(BaseModel):
+    name: str
+    version: str
+    target: str
+    features: list[str]
+    endpoints: dict[str, str]
+    never_retrains: bool = True
+
+
 def roof_features_model(metrics: dict[str, Any]) -> type[BaseModel]:
     """Build the request model from training-fold min/max (never invented)."""
     ranges = metrics["feature_ranges_train"]
+    example = metrics["example_input"]
     field_defs: dict[str, Any] = {}
     for name in metrics["feature_list"]:
         lo = float(ranges[name]["min"])
         hi = float(ranges[name]["max"])
         field_defs[name] = (
             float,
-            Field(..., ge=lo, le=hi, description=f"Training range [{lo}, {hi}]"),
+            Field(
+                ...,
+                ge=lo,
+                le=hi,
+                description=f"Training-fold range [{lo}, {hi}]",
+                examples=[float(example[name])],
+            ),
         )
 
     class _RoofFeatures(BaseModel):
-        model_config = ConfigDict(extra="forbid")
+        model_config = ConfigDict(extra="forbid", json_schema_extra={"example": example})
 
         @field_validator("roof_area_m2", check_fields=False)
         @classmethod

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GeoSolar AI — Swiss rooftop solar potential</title>
+    <title>GeoSolar AI — Swiss Rooftop Solar Potential Predictor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -20,38 +20,37 @@
   </head>
   <body>
     <header class="top">
-      <p class="kicker">Sonnendach.ch · BFE / SFOE</p>
+      <p class="kicker">Sonnendach.ch · BFE / swisstopo / MeteoSwiss</p>
       <h1>GeoSolar AI</h1>
-      <p class="lede">
-        Predict a Swiss roof’s official solar suitability class from location and geometry.
-        No radiation field — that would leak the answer.
-      </p>
+      <p class="lede">Swiss Rooftop Solar Potential Predictor</p>
     </header>
 
     <main class="layout">
-      <section class="map-panel">
+      <section class="map-panel card">
         <div id="map" role="application" aria-label="Map of Switzerland"></div>
-        <p class="hint">Click a rooftop. Coordinates are WGS84.</p>
+        <p class="hint">Click a rooftop. Coordinates are WGS84 latitude / longitude.</p>
       </section>
 
-      <section class="form-panel">
+      <section class="form-panel card">
         <form id="predict-form">
           <label>
-            Latitude
+            Latitude (°)
             <input id="latitude" name="latitude" type="number" step="any" required />
+            <span class="hint">Click the map, or type a Swiss WGS84 latitude</span>
           </label>
           <label>
-            Longitude
+            Longitude (°)
             <input id="longitude" name="longitude" type="number" step="any" required />
           </label>
           <label>
             Roof area (m²)
             <input id="roof_area_m2" name="roof_area_m2" type="number" step="any" required />
+            <span class="hint">Tilted usable roof area (Sonnendach FLAECHE)</span>
           </label>
           <label>
             Slope (°)
             <input id="slope_deg" name="slope_deg" type="number" step="1" required />
-            <span class="hint">0 = flat, 89 = nearly vertical</span>
+            <span class="hint">0 = flat, 89 = nearly vertical (NEIGUNG)</span>
           </label>
           <label>
             Aspect (°)
@@ -61,8 +60,9 @@
               <strong id="aspect-value">0° south</strong>
               <span>N +180</span>
             </span>
+            <span class="hint">0 = south, −90 = east, +90 = west (AUSRICHTUNG)</span>
           </label>
-          <button type="submit">Predict class</button>
+          <button type="submit" id="predict-btn">PREDICT SOLAR POTENTIAL</button>
           <button type="button" id="example-btn" class="ghost">Load a real test roof</button>
         </form>
 
@@ -81,9 +81,9 @@
     </main>
 
     <footer>
-      <a href="/docs">API docs</a>
-      · FastAPI loads a saved pipeline only
-      · DIT323
+      Data: BFE / swisstopo / MeteoSwiss (Sonnendach.ch).
+      <a href="/docs">API docs</a>.
+      Student project: DIT323.
     </footer>
 
     <script

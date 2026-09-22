@@ -1,3 +1,5 @@
+const API_BASE = "";
+
 const COLORS = {
   1: "#6b7c93",
   2: "#c4b056",
@@ -21,8 +23,8 @@ const ASPECT_WORDS = (deg) => {
 const $ = (id) => document.getElementById(id);
 
 const map = L.map("map").setView([46.82, 8.23], 8);
-L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-  attribution: "&copy; OpenStreetMap &copy; CARTO",
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "&copy; OpenStreetMap contributors",
   maxZoom: 19,
 }).addTo(map);
 
@@ -33,8 +35,8 @@ function setMarker(lat, lon) {
   const latlng = [lat, lon];
   if (marker) marker.setLatLng(latlng);
   else marker = L.marker(latlng).addTo(map);
-  $("latitude").value = lat.toFixed(6);
-  $("longitude").value = lon.toFixed(6);
+  $("latitude").value = Number(lat).toFixed(6);
+  $("longitude").value = Number(lon).toFixed(6);
 }
 
 map.on("click", (e) => setMarker(e.latlng.lat, e.latlng.lng));
@@ -44,8 +46,7 @@ $("aspect_deg").addEventListener("input", (e) => {
 });
 
 function applyBounds(ranges) {
-  const ids = ["latitude", "longitude", "roof_area_m2", "slope_deg"];
-  ids.forEach((id) => {
+  ["latitude", "longitude", "roof_area_m2", "slope_deg"].forEach((id) => {
     const el = $(id);
     el.min = ranges[id].min;
     el.max = ranges[id].max;
@@ -95,6 +96,9 @@ function renderResult(data) {
 $("predict-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   showError("");
+  const btn = $("predict-btn");
+  btn.disabled = true;
+  btn.textContent = "Predicting…";
   const payload = {
     latitude: Number($("latitude").value),
     longitude: Number($("longitude").value),
@@ -102,28 +106,38 @@ $("predict-form").addEventListener("submit", async (e) => {
     slope_deg: Number($("slope_deg").value),
     aspect_deg: Number($("aspect_deg").value),
   };
-  const res = await fetch("/predict", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const body = await res.json();
-  if (!res.ok) {
-    showError(JSON.stringify(body.detail || body, null, 2));
+  try {
+    const res = await fetch(`${API_BASE}/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      showError(JSON.stringify(body.detail || body, null, 2));
+      $("result").hidden = true;
+      return;
+    }
+    renderResult(body);
+  } catch (err) {
+    showError("API is not reachable. Start uvicorn app.main:app --host 127.0.0.1 --port 8000");
     $("result").hidden = true;
-    return;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "PREDICT SOLAR POTENTIAL";
   }
-  renderResult(body);
 });
 
 $("example-btn").addEventListener("click", fillExample);
 
 (async function init() {
-  const res = await fetch("/metrics");
-  metrics = await res.json();
-  applyBounds(metrics.feature_ranges_train);
-  $("roof_area_m2").value = 40;
-  $("slope_deg").value = 30;
-  $("aspect_deg").value = 0;
-  $("aspect-value").textContent = ASPECT_WORDS(0);
+  try {
+    const res = await fetch(`${API_BASE}/metrics`);
+    if (!res.ok) throw new Error("metrics");
+    metrics = await res.json();
+    applyBounds(metrics.feature_ranges_train);
+    fillExample();
+  } catch (err) {
+    showError("Could not load /metrics. Is the API running?");
+  }
 })();

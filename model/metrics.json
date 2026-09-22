@@ -1,0 +1,181 @@
+{
+  "dataset_size": 100000,
+  "train_size": 80000,
+  "test_size": 20000,
+  "split": {
+    "test_size": 0.2,
+    "stratify": true,
+    "random_state": 42
+  },
+  "feature_list": [
+    "latitude",
+    "longitude",
+    "roof_area_m2",
+    "slope_deg",
+    "aspect_deg"
+  ],
+  "pipeline_numeric_after_aspect_trig": [
+    "latitude",
+    "longitude",
+    "roof_area_m2",
+    "slope_deg",
+    "aspect_deg",
+    "aspect_sin",
+    "aspect_cos"
+  ],
+  "class_labels": {
+    "1": "gering / low",
+    "2": "mittel / medium",
+    "3": "gut / good",
+    "4": "sehr gut / very good",
+    "5": "hervorragend / excellent"
+  },
+  "classes_in_model_order": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "baseline": {
+    "strategy": "most_frequent",
+    "accuracy": 0.29005,
+    "macro_f1": 0.08993449866284252,
+    "predicted_class": 3
+  },
+  "test_metrics": {
+    "accuracy": 0.67395,
+    "macro_f1": 0.6744630066111315,
+    "per_class": {
+      "1": {
+        "label": "gering / low",
+        "precision": 0.912611198325484,
+        "recall": 0.5701209545603139,
+        "f1": 0.7018108651911469,
+        "support": 3059
+      },
+      "2": {
+        "label": "mittel / medium",
+        "precision": 0.7407738095238096,
+        "recall": 0.5878601794992915,
+        "f1": 0.6555175138267053,
+        "support": 4234
+      },
+      "3": {
+        "label": "gut / good",
+        "precision": 0.6159398939304656,
+        "recall": 0.7207378038269264,
+        "f1": 0.6642306775756613,
+        "support": 5801
+      },
+      "4": {
+        "label": "sehr gut / very good",
+        "precision": 0.6303688328277184,
+        "recall": 0.7573374256666027,
+        "f1": 0.6880446148483792,
+        "support": 5213
+      },
+      "5": {
+        "label": "hervorragend / excellent",
+        "precision": 0.665673420738975,
+        "recall": 0.6597755463673951,
+        "f1": 0.6627113616137644,
+        "support": 1693
+      }
+    },
+    "confusion_matrix_labels": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "confusion_matrix": [
+      [
+        1744,
+        552,
+        516,
+        224,
+        23
+      ],
+      [
+        167,
+        2489,
+        1250,
+        299,
+        29
+      ],
+      [
+        0,
+        319,
+        4181,
+        1221,
+        80
+      ],
+      [
+        0,
+        0,
+        836,
+        3948,
+        429
+      ],
+      [
+        0,
+        0,
+        5,
+        571,
+        1117
+      ]
+    ]
+  },
+  "feature_importances": {
+    "latitude": 0.11072854661523149,
+    "longitude": 0.08730334341220654,
+    "roof_area_m2": 0.0768362738049713,
+    "slope_deg": 0.23244789211954356,
+    "aspect_deg": 0.15666521619951665,
+    "aspect_sin": 0.08331141871923677,
+    "aspect_cos": 0.2527073091292937
+  },
+  "feature_ranges_train": {
+    "latitude": {
+      "min": 45.8229712014301,
+      "max": 47.793028589129435
+    },
+    "longitude": {
+      "min": 5.965026006800216,
+      "max": 10.451887674801968
+    },
+    "roof_area_m2": {
+      "min": 0.0100894595439816,
+      "max": 12783.1753161509
+    },
+    "slope_deg": {
+      "min": 0.0,
+      "max": 89.0
+    },
+    "aspect_deg": {
+      "min": -180.0,
+      "max": 180.0
+    }
+  },
+  "example_input": {
+    "latitude": 46.2082020655381,
+    "longitude": 6.999643828338436,
+    "roof_area_m2": 54.5705322466076,
+    "slope_deg": 15.0,
+    "aspect_deg": -3.0
+  },
+  "example_true_klasse": 4,
+  "sklearn_version": "1.9.1",
+  "training_date_utc": "2026-09-21",
+  "artifact": "model/model_pipeline.joblib",
+  "artifact_size_mb": 20.437,
+  "model": {
+    "type": "RandomForestClassifier",
+    "n_estimators": 100,
+    "max_depth": 16,
+    "min_samples_leaf": 5,
+    "random_state": 42
+  }
+}

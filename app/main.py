@@ -11,11 +11,10 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
-from app.schemas import HealthResponse, PredictResponse, roof_features_model
+from app.schemas import ApiInfo, HealthResponse, PredictResponse, roof_features_model
 from training.features import FEATURE_COLUMNS
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,9 +61,23 @@ app.add_middleware(
 )
 
 
-@app.get("/", include_in_schema=False)
+@app.get("/", response_model=ApiInfo)
 def root():
-    return RedirectResponse("/app/")
+    metrics = app.state.metrics
+    return ApiInfo(
+        name="GeoSolar AI",
+        version="1.0.0",
+        target="KLASSE 1–5 (gering → hervorragend)",
+        features=list(metrics["feature_list"]),
+        endpoints={
+            "GET /": "API description",
+            "GET /health": "liveness + model loaded",
+            "GET /metrics": "training metrics.json",
+            "POST /predict": "suitability class + probabilities",
+            "GET /docs": "Swagger UI",
+            "GET /app/": "web form + Leaflet map",
+        },
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -120,7 +133,8 @@ def custom_openapi():
         "required": True,
         "content": {
             "application/json": {
-                "schema": {"$ref": "#/components/schemas/RoofFeatures"}
+                "schema": {"$ref": "#/components/schemas/RoofFeatures"},
+                "example": app.state.metrics["example_input"],
             }
         },
     }

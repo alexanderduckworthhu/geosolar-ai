@@ -59,6 +59,7 @@ h1 {
   max-width: 1200px;
 }
 
+.card,
 .map-panel,
 .form-panel {
   background: var(--panel);
@@ -68,7 +69,7 @@ h1 {
 }
 
 #map {
-  height: min(68vh, 640px);
+  height: min(38vh, 340px);
   border-radius: 8px;
 }
 
@@ -120,6 +121,11 @@ button {
   background: var(--ink);
   color: var(--paper);
   cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 button.ghost {
