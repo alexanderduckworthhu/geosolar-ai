@@ -708,13 +708,22 @@ async function init() {
 
 init();
 
-window.GeoSolar = { goCity, setViewMode, setLang, setFloor: (n) => {
-  floor = Number(n);
-  $("class-floor").value = String(n);
-  $("floor-label").textContent = String(n);
-  paint();
-}, setMode: (m) => {
-  mode = m;
-  document.querySelectorAll("#mode-row button").forEach((x) => x.classList.toggle("on", x.dataset.mode === m));
-  paint();
-}};
+window.GeoSolar = {
+  goCity,
+  setViewMode,
+  setLang,
+  map,
+  setFloor: (n) => {
+    floor = Number(n);
+    $("class-floor").value = String(n);
+    $("floor-label").textContent = String(n);
+    paint();
+  },
+  setMode: (m) => {
+    mode = m;
+    document.querySelectorAll("#mode-row button").forEach((x) =>
+      x.classList.toggle("on", x.dataset.mode === m)
+    );
+    paint();
+  },
+};

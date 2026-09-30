@@ -1,271 +1,247 @@
 #!/usr/bin/env python3
-"""16:9 product demo of the GeoSolar explorer, styled like the live UI."""
+"""Record a 16:9 walkthrough of the live GeoSolar explorer (map underlayer included)."""
 
 from __future__ import annotations
 
-import json
+import http.server
+import socketserver
 import sys
+import threading
+from io import BytesIO
 from pathlib import Path
 
 import numpy as np
-from matplotlib.patches import Polygon, Rectangle
-from matplotlib.path import Path as MplPath
-from matplotlib.patches import PathPatch
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from theme import COPPER, INK, KLASSE_COLORS, MUTED, PAPER, SUN
+from theme import COPPER, INK, MUTED, PAPER, SUN
 
-HEXES = json.loads((ROOT / "frontend" / "data" / "hexes.json").read_text())
-ROOFS = json.loads((ROOT / "frontend" / "data" / "roofs.json").read_text())
 OUT = ROOT / "visuals"
-
-CLASS = [KLASSE_COLORS[k] for k in range(1, 6)]
-
-
-def lerp(a, b, t):
-    pa = [int(a[i : i + 2], 16) for i in (1, 3, 5)]
-    pb = [int(b[i : i + 2], 16) for i in (1, 3, 5)]
-    m = [int(pa[i] + (pb[i] - pa[i]) * t) for i in range(3)]
-    return f"#{m[0]:02x}{m[1]:02x}{m[2]:02x}"
-
-
-def hex_color(h, floor=1, mode="mean"):
-    if h["mean_klasse"] < floor:
-        return "#101a16"
-    if mode == "pct4":
-        return lerp("#1e3a2f", "#f0c27a", min(1, h["pct4"] / 55))
-    x = h["mean_klasse"]
-    i = max(0, min(3, int(x) - 1))
-    t = x - int(x)
-    return lerp(CLASS[i], CLASS[i + 1], t)
-
-
-def in_city(lat, lon, city):
-    if city["id"] == "ch":
-        return True
-    dlat = (lat - city["lat"]) * 111
-    dlon = (lon - city["lon"]) * 111 * np.cos(np.radians(city["lat"]))
-    return np.hypot(dlat, dlon) <= city["radius_km"]
-
-
-def city_by(cid):
-    return next(c for c in HEXES["cities"] if c["id"] == cid)
-
-
-def hex_clip():
-    # pointy-top hex in axes 0–1 of the map panel
-    return np.array([[0.50, 0.96], [0.91, 0.73], [0.91, 0.27], [0.50, 0.04], [0.09, 0.27], [0.09, 0.73]])
-
-
-def fig_base():
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(figsize=(16, 9), dpi=120)
-    fig.patch.set_facecolor(PAPER)
-    ax = fig.add_axes([0.03, 0.08, 0.62, 0.82])
-    ax.set_facecolor(PAPER)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    for s in ax.spines.values():
-        s.set_visible(False)
-    axp = fig.add_axes([0.68, 0.10, 0.29, 0.78])
-    axp.set_facecolor("#101a16")
-    for s in axp.spines.values():
-        s.set_color("#24332c")
-    axp.set_xticks([])
-    axp.set_yticks([])
-    axp.set_xlim(0, 1)
-    axp.set_ylim(0, 1)
-    axp.add_patch(Rectangle((0, 0), 0.018, 1, color=COPPER, transform=axp.transAxes, zorder=5))
-    fig.text(0.03, 0.945, "GeoSolar", color=INK, fontsize=18, fontweight="medium")
-    fig.text(0.145, 0.948, "AI", color=COPPER, fontsize=10, fontweight="medium")
-    return fig, ax, axp
-
-
-def draw_hexes(ax, hexes, floor=1, mode="mean"):
-    lons = [p[0] for h in hexes for p in h["ring"]]
-    lats = [p[1] for h in hexes for p in h["ring"]]
-    ax.set_xlim(min(lons) - 0.15, max(lons) + 0.15)
-    ax.set_ylim(min(lats) - 0.12, max(lats) + 0.12)
-    ax.set_aspect("equal")
-    for h in hexes:
-        ring = np.array(h["ring"])
-        ax.add_patch(
-            Polygon(
-                np.column_stack([ring[:, 0], ring[:, 1]]),
-                facecolor=hex_color(h, floor, mode),
-                edgecolor=PAPER,
-                lw=0.15,
-                zorder=2,
-            )
-        )
-
-
-def draw_roofs(ax, rows, city):
-    pts = [r for r in rows if in_city(r[0], r[1], city)]
-    if city["id"] != "ch":
-        ax.set_xlim(city["lon"] - 0.06, city["lon"] + 0.06)
-        ax.set_ylim(city["lat"] - 0.04, city["lat"] + 0.04)
-    ax.set_aspect("equal")
-    cols = [CLASS[int(r[2]) - 1] for r in pts]
-    ax.scatter([r[1] for r in pts], [r[0] for r in pts], s=6, c=cols, linewidths=0, zorder=3)
-
-
-def panel(axp, kicker, title, m1, l1, m2, l2, insight, caption):
-    axp.text(0.08, 0.92, kicker.upper(), color=COPPER, fontsize=8, transform=axp.transAxes)
-    axp.text(0.08, 0.84, title, color=INK, fontsize=16, transform=axp.transAxes)
-    axp.text(0.08, 0.68, m1, color=INK, fontsize=22, transform=axp.transAxes)
-    axp.text(0.08, 0.62, l1, color=MUTED, fontsize=8, transform=axp.transAxes)
-    axp.text(0.52, 0.68, m2, color=INK, fontsize=22, transform=axp.transAxes)
-    axp.text(0.52, 0.62, l2, color=MUTED, fontsize=8, transform=axp.transAxes)
-    axp.text(0.08, 0.46, insight, color="#d7e0d8", fontsize=9, transform=axp.transAxes, wrap=True)
-    axp.text(0.08, 0.12, caption, color=MUTED, fontsize=8, transform=axp.transAxes)
+W, H = 1440, 810
+GIF_W, GIF_H = 960, 540
+FPS = 6
+PAPER_RGB = (8, 17, 14)  # #08110e
 
 
 def scene_title():
     import matplotlib.pyplot as plt
 
-    fig = plt.figure(figsize=(16, 9), dpi=120)
+    fig = plt.figure(figsize=(W / 100, H / 100), dpi=100)
     fig.patch.set_facecolor(PAPER)
     fig.text(0.08, 0.58, "GeoSolar AI", color=INK, fontsize=42, fontweight="medium")
     fig.text(0.08, 0.48, "Swiss rooftop solar, from the Sonnendach cadastre.", color=MUTED, fontsize=16)
     fig.text(0.08, 0.22, "Hex neighbourhoods  ·  each roof  ·  EN / DE / FR / IT", color=COPPER, fontsize=12)
+    fig.text(0.08, 0.14, "Satellite, streets, and buildings underneath.", color=MUTED, fontsize=12)
     return fig
 
 
 def scene_end():
     import matplotlib.pyplot as plt
 
-    fig = plt.figure(figsize=(16, 9), dpi=120)
+    fig = plt.figure(figsize=(W / 100, H / 100), dpi=100)
     fig.patch.set_facecolor(PAPER)
     fig.text(0.08, 0.55, "Open the explorer", color=INK, fontsize=32)
     fig.text(0.08, 0.44, "cd frontend && python3 -m http.server 8000", color=SUN, fontsize=14)
-    fig.text(0.08, 0.22, "100,000 official roofs  ·  no live API", color=MUTED, fontsize=12)
+    fig.text(0.08, 0.22, "100,000 official roofs  ·  map underlayer  ·  no live API", color=MUTED, fontsize=12)
     return fig
 
 
-def rgb(fig):
+def fig_to_frame(fig):
+    import matplotlib.pyplot as plt
+
     fig.canvas.draw()
     buf = np.asarray(fig.canvas.buffer_rgba())[:, :, :3].copy()
-    return buf
+    plt.close(fig)
+    return Image.fromarray(buf).convert("RGB").resize((W, H), Image.Resampling.LANCZOS)
+
+
+def hold(frames, im: Image.Image, seconds: float):
+    n = max(1, int(round(seconds * FPS)))
+    arr = np.asarray(im.convert("RGB"))
+    frames.extend([arr] * n)
+
+
+class QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=str(ROOT / "frontend"), **kwargs)
+
+    def log_message(self, format, *args):
+        pass
+
+
+class ReuseTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+
+def serve_frontend():
+    httpd = ReuseTCPServer(("127.0.0.1", 0), QuietHandler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    return httpd, httpd.server_address[1]
+
+
+def wait_ready(page):
+    page.wait_for_selector("#city-row button", timeout=30000)
+    page.wait_for_function(
+        "() => document.querySelectorAll('#city-row button').length >= 8 && window.GeoSolar",
+        timeout=30000,
+    )
+    page.evaluate(
+        """() => {
+          const g = window.GeoSolar;
+          if (g && g.map) {
+            g.map.invalidateSize();
+          }
+        }"""
+    )
+
+
+def wait_tiles(page, min_ok=4, extra_ms=1100):
+    try:
+        page.wait_for_function(
+            f"""() => {{
+              const imgs = [...document.querySelectorAll('.leaflet-tile-pane img')];
+              return imgs.filter(i => i.complete && i.naturalWidth > 0).length >= {min_ok};
+            }}""",
+            timeout=20000,
+        )
+    except Exception:
+        pass
+    page.wait_for_timeout(extra_ms)
+    page.evaluate(
+        """() => new Promise((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        })"""
+    )
+
+
+def grab(page) -> Image.Image:
+    raw = page.screenshot(type="png", animations="disabled")
+    return Image.open(BytesIO(raw)).convert("RGB").resize((W, H), Image.Resampling.LANCZOS)
+
+
+def act(page, js: str, min_ok=4, extra_ms=1100):
+    page.evaluate(js)
+    wait_tiles(page, min_ok=min_ok, extra_ms=extra_ms)
+
+
+def record_live():
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise SystemExit(
+            "Playwright is required to capture the live explorer.\n"
+            "  .venv/bin/pip install playwright"
+        ) from exc
+
+    httpd, port = serve_frontend()
+    shots: list[Image.Image] = []
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                channel="chrome",
+                headless=True,
+                args=["--hide-scrollbars", "--disable-dev-shm-usage"],
+            )
+            context = browser.new_context(
+                viewport={"width": W, "height": H},
+                device_scale_factor=1,
+                color_scheme="dark",
+            )
+            context.add_init_script("localStorage.setItem('geosolar-lang', 'en');")
+            page = context.new_page()
+            page.goto(f"http://127.0.0.1:{port}/?demo=1", wait_until="domcontentloaded")
+            wait_ready(page)
+            wait_tiles(page, min_ok=4, extra_ms=1600)
+
+            # 1 Switzerland hex over imagery
+            shots.append(grab(page))
+
+            # 2 class floor 4 — dim low cells, copper remains
+            act(page, "GeoSolar.setFloor(4)", extra_ms=700)
+            shots.append(grab(page))
+
+            # 3 colour by share of class 4–5
+            act(page, "GeoSolar.setFloor(1); GeoSolar.setMode('pct4')", extra_ms=700)
+            shots.append(grab(page))
+
+            # 4 Sion — Valais, high class over alpine terrain
+            act(
+                page,
+                "GeoSolar.setMode('mean'); GeoSolar.goCity('vs')",
+                min_ok=4,
+                extra_ms=1400,
+            )
+            shots.append(grab(page))
+
+            # 5 Zürich hex — streets visible through cells
+            act(page, "GeoSolar.goCity('zh')", min_ok=4, extra_ms=1500)
+            shots.append(grab(page))
+
+            # 6 Each roof on Zürich — buildings, rail, cadastre points
+            act(page, "GeoSolar.setViewMode('roofs')", min_ok=4, extra_ms=1800)
+            shots.append(grab(page))
+
+            # 7 German UI on the same roof view
+            act(page, "GeoSolar.setLang('de')", min_ok=4, extra_ms=600)
+            shots.append(grab(page))
+
+            # 8 back to national hex, French
+            act(
+                page,
+                "GeoSolar.setLang('fr'); GeoSolar.setViewMode('hex'); GeoSolar.goCity('ch')",
+                min_ok=4,
+                extra_ms=1500,
+            )
+            shots.append(grab(page))
+
+            browser.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+    return shots
+
+
+def pad16(arr: np.ndarray) -> np.ndarray:
+    h, w = arr.shape[:2]
+    nh = (h + 15) // 16 * 16
+    nw = (w + 15) // 16 * 16
+    if nh == h and nw == w:
+        return arr
+    out = np.empty((nh, nw, 3), dtype=arr.dtype)
+    out[:] = PAPER_RGB
+    out[:h, :w] = arr
+    return out
+
+
+def write_outputs(frames):
+    import imageio.v2 as imageio
+
+    gif_frames = [
+        np.asarray(Image.fromarray(f).resize((GIF_W, GIF_H), Image.Resampling.LANCZOS))
+        for f in frames
+    ]
+    gif = OUT / "explorer_demo.gif"
+    mp4 = OUT / "explorer_demo.mp4"
+    imageio.mimsave(gif, gif_frames, fps=FPS, loop=0)
+    print("wrote", gif, gif.stat().st_size)
+    imageio.mimsave(mp4, [pad16(f) for f in frames], fps=FPS, codec="libx264", quality=7)
+    print("wrote", mp4, mp4.stat().st_size)
 
 
 def main():
-    import matplotlib.pyplot as plt
-    import imageio.v2 as imageio
+    frames: list[np.ndarray] = []
+    hold(frames, fig_to_frame(scene_title()), 2.2)
 
-    cities = {c["id"]: c for c in HEXES["cities"]}
-    frames = []
+    print("capturing live explorer…")
+    shots = record_live()
+    durations = [2.6, 2.2, 2.2, 2.6, 2.6, 3.2, 2.2, 2.4]
+    for im, sec in zip(shots, durations):
+        hold(frames, im, sec)
 
-    def hold(fig, n=8):
-        im = rgb(fig)
-        plt.close(fig)
-        frames.extend([im] * n)
-
-    hold(scene_title(), 10)
-
-    vis = HEXES["hexes"]
-    fig, ax, axp = fig_base()
-    draw_hexes(ax, vis)
-    panel(
-        axp,
-        "Switzerland",
-        "All sampled roofs",
-        "2.9",
-        "mean class",
-        "34.5",
-        "% class 4–5",
-        "Class 4–5 roofs are 34.5% of this set — the same mix as the national sample.",
-        "Hex 2.4 km  ·  100,000 roofs",
-    )
-    hold(fig, 12)
-
-    fig, ax, axp = fig_base()
-    draw_hexes(ax, vis, floor=4)
-    panel(
-        axp,
-        "Switzerland",
-        "Class floor 4",
-        "2.9",
-        "mean class",
-        "34.5",
-        "% class 4–5",
-        "Cells below class 4 dim. Copper remains where mean suitability is high.",
-        "Class floor  ·  4",
-    )
-    hold(fig, 10)
-
-    fig, ax, axp = fig_base()
-    draw_hexes(ax, vis, mode="pct4")
-    panel(
-        axp,
-        "Switzerland",
-        "Share of class 4–5",
-        "2.9",
-        "mean class",
-        "34.5",
-        "% class 4–5",
-        "Colour is the share of excellent roofs, not the neighbourhood mean.",
-        "Mode  ·  Class 4–5",
-    )
-    hold(fig, 10)
-
-    sion = cities["vs"]
-    vis_s = [h for h in vis if in_city(h["lat"], h["lon"], sion)]
-    fig, ax, axp = fig_base()
-    draw_hexes(ax, vis_s)
-    panel(
-        axp,
-        "City",
-        "Sion",
-        "3.7",
-        "mean class",
-        "58.6",
-        "% class 4–5",
-        "Sion is 24 points ahead of the Swiss sample on class 4–5 roofs.",
-        "City chip  ·  Valais",
-    )
-    hold(fig, 12)
-
-    fig, ax, axp = fig_base()
-    draw_roofs(ax, ROOFS["rows"], cities["zh"])
-    panel(
-        axp,
-        "City",
-        "Zürich",
-        "2.7",
-        "mean class",
-        "26.6",
-        "% class 4–5",
-        "Each mark is one sampled Sonnendach MultiPoint — cadastre precision.",
-        "Each roof  ·  7,851 points",
-    )
-    hold(fig, 14)
-
-    fig, ax, axp = fig_base()
-    draw_hexes(ax, vis)
-    panel(
-        axp,
-        "Schweiz",
-        "Alle beprobten Dächer",
-        "2,9",
-        "mittlere Klasse",
-        "34,5",
-        "% Klasse 4–5",
-        "Sprache: Deutsch. Dieselbe Karte, gleicher Kataster.",
-        "EN  DE  FR  IT",
-    )
-    hold(fig, 10)
-
-    hold(scene_end(), 10)
-
-    gif = OUT / "explorer_demo.gif"
-    mp4 = OUT / "explorer_demo.mp4"
-    imageio.mimsave(gif, frames, fps=4, loop=0)
-    print("wrote", gif, gif.stat().st_size)
-    imageio.mimsave(mp4, frames, fps=4, codec="libx264", quality=7)
-    print("wrote", mp4, mp4.stat().st_size)
+    hold(frames, fig_to_frame(scene_end()), 2.2)
+    write_outputs(frames)
 
 
 if __name__ == "__main__":
