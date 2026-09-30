@@ -6,14 +6,18 @@ Built from a stratified sample of 10,071,755 roofs. No live API: the explorer is
 
 ![Switzerland from real roofs](visuals/switzerland_by_roofs.png)
 
-## Run
+## Open
+
+**https://alexanderduckworthhu.github.io/geosolar-ai/**
+
+The explorer is static JSON + Leaflet on GitHub Pages. No API, no localhost.
+
+To run a local copy:
 
 ```bash
 cd frontend
 python3 -m http.server 8000
 ```
-
-Open http://127.0.0.1:8000/
 
 | Control | |
 | --- | --- |
