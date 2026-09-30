@@ -31,8 +31,8 @@ def scene_title():
     fig.patch.set_facecolor(PAPER)
     fig.text(0.08, 0.58, "GeoSolar AI", color=INK, fontsize=42, fontweight="medium")
     fig.text(0.08, 0.48, "Swiss rooftop solar, from the Sonnendach cadastre.", color=MUTED, fontsize=16)
-    fig.text(0.08, 0.22, "Hex neighbourhoods  ·  each roof  ·  EN / DE / FR / IT", color=COPPER, fontsize=12)
-    fig.text(0.08, 0.14, "Satellite, streets, and buildings underneath.", color=MUTED, fontsize=12)
+    fig.text(0.08, 0.22, "Hex neighbourhoods  ·  each roof  ·  map on / off", color=COPPER, fontsize=12)
+    fig.text(0.08, 0.14, "EN / DE / FR / IT", color=MUTED, fontsize=12)
     return fig
 
 
@@ -42,8 +42,8 @@ def scene_end():
     fig = plt.figure(figsize=(W / 100, H / 100), dpi=100)
     fig.patch.set_facecolor(PAPER)
     fig.text(0.08, 0.55, "Open the explorer", color=INK, fontsize=32)
-    fig.text(0.08, 0.44, "cd frontend && python3 -m http.server 8000", color=SUN, fontsize=14)
-    fig.text(0.08, 0.22, "100,000 official roofs  ·  map underlayer  ·  no live API", color=MUTED, fontsize=12)
+    fig.text(0.08, 0.42, "alexanderduckworthhu.github.io/geosolar-ai", color=SUN, fontsize=14)
+    fig.text(0.08, 0.22, "100,000 official roofs  ·  no live API", color=MUTED, fontsize=12)
     return fig
 
 
@@ -121,9 +121,17 @@ def grab(page) -> Image.Image:
     return Image.open(BytesIO(raw)).convert("RGB").resize((W, H), Image.Resampling.LANCZOS)
 
 
-def act(page, js: str, min_ok=4, extra_ms=1100):
+def act(page, js: str, min_ok=4, extra_ms=1100, wait_map=True):
     page.evaluate(js)
-    wait_tiles(page, min_ok=min_ok, extra_ms=extra_ms)
+    if wait_map:
+        wait_tiles(page, min_ok=min_ok, extra_ms=extra_ms)
+        return
+    page.wait_for_timeout(extra_ms)
+    page.evaluate(
+        """() => new Promise((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        })"""
+    )
 
 
 def record_live():
@@ -149,7 +157,10 @@ def record_live():
                 device_scale_factor=1,
                 color_scheme="dark",
             )
-            context.add_init_script("localStorage.setItem('geosolar-lang', 'en');")
+            context.add_init_script(
+                "localStorage.setItem('geosolar-lang', 'en');"
+                "localStorage.setItem('geosolar-base', 'on');"
+            )
             page = context.new_page()
             page.goto(f"http://127.0.0.1:{port}/?demo=1", wait_until="domcontentloaded")
             wait_ready(page)
@@ -158,7 +169,7 @@ def record_live():
             # 1 Switzerland hex over imagery
             shots.append(grab(page))
 
-            # 2 class floor 4 — dim low cells, copper remains
+            # 2 class floor 4
             act(page, "GeoSolar.setFloor(4)", extra_ms=700)
             shots.append(grab(page))
 
@@ -166,7 +177,7 @@ def record_live():
             act(page, "GeoSolar.setFloor(1); GeoSolar.setMode('pct4')", extra_ms=700)
             shots.append(grab(page))
 
-            # 4 Sion — Valais, high class over alpine terrain
+            # 4 Sion, map on
             act(
                 page,
                 "GeoSolar.setMode('mean'); GeoSolar.goCity('vs')",
@@ -175,19 +186,28 @@ def record_live():
             )
             shots.append(grab(page))
 
-            # 5 Zürich hex — streets visible through cells
+            # 5 Zürich hex, streets through cells
             act(page, "GeoSolar.goCity('zh')", min_ok=4, extra_ms=1500)
             shots.append(grab(page))
 
-            # 6 Each roof on Zürich — buildings, rail, cadastre points
-            act(page, "GeoSolar.setViewMode('roofs')", min_ok=4, extra_ms=1800)
+            # 6 No map
+            act(page, "GeoSolar.setBase(false)", extra_ms=800, wait_map=False)
             shots.append(grab(page))
 
-            # 7 German UI on the same roof view
+            # 7 Map back, each roof on Zürich
+            act(
+                page,
+                "GeoSolar.setBase(true); GeoSolar.setViewMode('roofs')",
+                min_ok=4,
+                extra_ms=1800,
+            )
+            shots.append(grab(page))
+
+            # 8 German UI
             act(page, "GeoSolar.setLang('de')", min_ok=4, extra_ms=600)
             shots.append(grab(page))
 
-            # 8 back to national hex, French
+            # 9 national hex, French, map on
             act(
                 page,
                 "GeoSolar.setLang('fr'); GeoSolar.setViewMode('hex'); GeoSolar.goCity('ch')",
@@ -236,7 +256,7 @@ def main():
 
     print("capturing live explorer…")
     shots = record_live()
-    durations = [2.6, 2.2, 2.2, 2.6, 2.6, 3.2, 2.2, 2.4]
+    durations = [2.4, 2.0, 2.0, 2.4, 2.4, 2.6, 3.0, 2.0, 2.2]
     for im, sec in zip(shots, durations):
         hold(frames, im, sec)
 
