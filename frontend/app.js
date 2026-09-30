@@ -47,7 +47,6 @@ L.tileLayer(
   {
     maxZoom: 19,
     maxNativeZoom: 19,
-    attribution: "Esri, Maxar, Earthstar Geographics",
   }
 ).addTo(map);
 
@@ -56,7 +55,6 @@ L.tileLayer(
   {
     pane: "labels",
     maxZoom: 19,
-    attribution: "Esri",
   }
 ).addTo(map);
 
@@ -65,7 +63,6 @@ L.tileLayer(
   {
     pane: "labels",
     maxZoom: 19,
-    attribution: "Esri",
   }
 ).addTo(map);
 
@@ -482,15 +479,6 @@ function drawMarks() {
   });
 }
 
-function updateScale() {
-  const metres = map.distance(map.containerPointToLatLng([0, 0]), map.containerPointToLatLng([42, 0]));
-  let label;
-  if (metres >= 9500) label = `${Math.round(metres / 1000)} km`;
-  else if (metres >= 950) label = `${(metres / 1000).toFixed(1)} km`;
-  else label = `${Math.max(10, Math.round(metres / 10) * 10)} m`;
-  $("scale").innerHTML = `<i></i> ${label}`;
-}
-
 function fitView() {
   map.invalidateSize();
   if (view === "roofs") {
@@ -515,7 +503,6 @@ function fitView() {
       animate: false,
     });
   }
-  updateScale();
 }
 
 function applyLang() {
@@ -692,7 +679,6 @@ async function init() {
     showDefault();
     drawMarks();
   });
-  map.on("zoomend moveend", updateScale);
   window.addEventListener("resize", () => {
     map.invalidateSize();
     fitView();

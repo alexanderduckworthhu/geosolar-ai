@@ -181,40 +181,6 @@ body {
   text-shadow: 0 1px 4px #08110e, 0 0 8px #08110e;
 }
 
-.credit {
-  position: absolute;
-  left: 16%;
-  bottom: 14%;
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.58rem;
-  letter-spacing: 0.04em;
-  pointer-events: none;
-  z-index: 6;
-  text-shadow: 0 1px 4px #08110e;
-}
-
-.scale {
-  position: absolute;
-  right: 18%;
-  bottom: 14%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  pointer-events: none;
-  z-index: 6;
-}
-
-.scale i {
-  display: block;
-  width: 42px;
-  height: 1px;
-  background: var(--copper);
-}
-
 .hint {
   position: absolute;
   bottom: 22px;
