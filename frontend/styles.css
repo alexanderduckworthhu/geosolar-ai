@@ -25,24 +25,28 @@ body {
   font-family: Outfit, sans-serif;
 }
 
+body {
+  display: flex;
+  flex-direction: column;
+}
+
 .top {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  flex-shrink: 0;
   z-index: 30;
+  padding: 14px 22px 12px;
+}
+
+.top-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 16px 22px 0;
-  pointer-events: none;
+  gap: 16px;
 }
 
 .brand {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  pointer-events: auto;
 }
 
 .brand strong {
@@ -62,7 +66,6 @@ body {
 .langs {
   display: flex;
   gap: 4px;
-  pointer-events: auto;
 }
 
 .langs button {
@@ -83,12 +86,8 @@ body {
 }
 
 .caption {
-  position: absolute;
-  top: 54px;
-  left: 22px;
-  z-index: 20;
-  max-width: min(46vw, 560px);
-  margin: 0;
+  max-width: min(42rem, calc(100vw - 420px));
+  margin: 8px 0 0;
   font-size: 0.78rem;
   line-height: 1.45;
   color: var(--muted);
@@ -104,20 +103,23 @@ body {
 .stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  height: 100%;
-  padding-top: 8px;
+  flex: 1;
+  min-height: 0;
 }
 
 .map-wrap {
   position: relative;
   display: grid;
+  grid-template-rows: 1fr auto;
   place-items: center;
+  min-height: 0;
+  padding: 4px 0 10px;
 }
 
 .globe {
   position: relative;
-  width: min(88vh, 96%);
-  height: min(88vh, 96%);
+  width: min(96%, calc(100dvh - 160px), 900px);
+  height: min(96%, calc(100dvh - 160px), 900px);
   max-width: 900px;
   max-height: 900px;
 }
@@ -187,12 +189,10 @@ body {
 }
 
 .hint {
-  position: absolute;
-  bottom: 22px;
-  left: 24px;
-  margin: 0;
+  margin: 6px 0 0;
   color: var(--muted);
   font-size: 0.72rem;
+  text-align: center;
 }
 
 .legend {
@@ -230,7 +230,7 @@ body {
 }
 
 .panel {
-  margin: 72px 18px 22px 0;
+  margin: 8px 18px 18px 0;
   padding: 18px 18px 22px;
   overflow: auto;
   background: var(--panel);
@@ -407,8 +407,7 @@ h2 {
 @media (max-width: 900px) {
   .stage {
     grid-template-columns: 1fr;
-    grid-template-rows: 52vh auto;
-    padding-top: 48px;
+    grid-template-rows: minmax(280px, 52vh) auto;
   }
   .globe {
     width: min(92vw, 70vh);
@@ -418,8 +417,7 @@ h2 {
     margin: 8px 12px 16px;
   }
   .caption {
-    max-width: 90vw;
+    max-width: none;
     font-size: 0.7rem;
-    top: 48px;
   }
 }

@@ -17,23 +17,24 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <link rel="stylesheet" href="styles.css?v=4" />
   </head>
   <body>
     <header class="top">
-      <div class="brand">
-        <strong>GeoSolar</strong>
-        <span>AI</span>
+      <div class="top-row">
+        <div class="brand">
+          <strong>GeoSolar</strong>
+          <span>AI</span>
+        </div>
+        <nav class="langs" id="langs" aria-label="Language">
+          <button type="button" data-lang="en" class="on">EN</button>
+          <button type="button" data-lang="de">DE</button>
+          <button type="button" data-lang="fr">FR</button>
+          <button type="button" data-lang="it">IT</button>
+        </nav>
       </div>
-      <nav class="langs" id="langs" aria-label="Language">
-        <button type="button" data-lang="en" class="on">EN</button>
-        <button type="button" data-lang="de">DE</button>
-        <button type="button" data-lang="fr">FR</button>
-        <button type="button" data-lang="it">IT</button>
-      </nav>
+      <p class="caption" id="caption"></p>
     </header>
-
-    <p class="caption" id="caption"></p>
 
     <div class="stage">
       <div class="map-wrap">
@@ -126,7 +127,7 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script src="i18n.js?v=3"></script>
-    <script src="app.js?v=3"></script>
+    <script src="i18n.js?v=4"></script>
+    <script src="app.js?v=4"></script>
   </body>
 </html>
