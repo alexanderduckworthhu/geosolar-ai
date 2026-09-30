@@ -23,6 +23,7 @@ python3 -m http.server 8000
 | --- | --- |
 | **EN / DE / FR / IT** | Interface language |
 | **Hex 2.4 km / Each roof** | Neighbourhood cells, or one cadastre MultiPoint per sampled roof |
+| **Map / No map** | Satellite underlayer on or off |
 | **CH / city chips** | Zoom the hexagonal view |
 | **Class floor** | Dim cells or roofs below that class |
 | **Mean class / Class 4–5** | Colour by average suitability or by share of excellent roofs |

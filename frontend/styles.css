@@ -167,6 +167,11 @@ body {
   filter: brightness(0.78) saturate(0.88) contrast(1.06);
 }
 
+#map.no-base .leaflet-tile-pane,
+#map.no-base .leaflet-labels-pane {
+  display: none;
+}
+
 .roof-canvas {
   pointer-events: none;
 }

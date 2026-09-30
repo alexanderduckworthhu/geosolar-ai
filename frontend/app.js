@@ -13,6 +13,7 @@ let view = "hex";
 let mode = "mean";
 let cityId = "ch";
 let floor = 1;
+let showBase = localStorage.getItem("geosolar-base") !== "off";
 let pinned = null;
 let layer = null;
 let hoverId = null;
@@ -299,10 +300,20 @@ function styleHex(hex) {
   const hovered = hoverId && hoverId.q === hex.q && hoverId.r === hex.r;
   const dim = hex.mean_klasse < floor;
   return {
-    color: active ? "#f7e6c4" : hovered ? "#e07a3d" : "rgba(243,234,220,0.35)",
-    weight: active ? 2.2 : hovered ? 1.6 : 0.7,
+    color: active ? "#f7e6c4" : hovered ? "#e07a3d" : showBase ? "rgba(243,234,220,0.35)" : "rgba(243,234,220,0.22)",
+    weight: active ? 2.2 : hovered ? 1.6 : showBase ? 0.7 : 0.55,
     fillColor: colorForHex(hex),
-    fillOpacity: dim ? 0.12 : hovered || active ? 0.72 : 0.46,
+    fillOpacity: dim
+      ? showBase
+        ? 0.12
+        : 0.22
+      : hovered || active
+        ? showBase
+          ? 0.72
+          : 0.95
+        : showBase
+          ? 0.46
+          : 0.88,
   };
 }
 
@@ -513,6 +524,8 @@ function applyLang() {
   $("hint").textContent = view === "roofs" ? i.hintRoofs : i.hintHex;
   $("btn-hex").textContent = i.viewHex;
   $("btn-roofs").textContent = i.viewRoofs;
+  $("btn-base-on").textContent = i.mapOn;
+  $("btn-base-off").textContent = i.mapOff;
   $("lbl-floor").textContent = i.classFloor;
   $("btn-mean").textContent = i.meanClass;
   $("btn-pct4").textContent = i.pct45;
@@ -535,6 +548,15 @@ function applyLang() {
     else if (pinned && pinned.q != null) showHex(pinned, true);
     else showDefault();
   }
+}
+
+function setBase(on) {
+  showBase = Boolean(on);
+  localStorage.setItem("geosolar-base", showBase ? "on" : "off");
+  $("map").classList.toggle("no-base", !showBase);
+  $("btn-base-on").classList.toggle("on", showBase);
+  $("btn-base-off").classList.toggle("on", !showBase);
+  if (layer) layer.eachLayer((l) => l.setStyle(styleHex(l.feature.properties)));
 }
 
 function setLang(next) {
@@ -637,6 +659,9 @@ async function init() {
   document.querySelectorAll("#view-row button").forEach((b) => {
     b.addEventListener("click", () => setViewMode(b.dataset.view));
   });
+  document.querySelectorAll("#base-row button").forEach((b) => {
+    b.addEventListener("click", () => setBase(b.dataset.base === "on"));
+  });
   document.querySelectorAll("#langs button").forEach((b) => {
     b.addEventListener("click", () => setLang(b.dataset.lang));
   });
@@ -684,6 +709,7 @@ async function init() {
     fitView();
   });
   addCityLabels();
+  setBase(showBase);
   paint();
   showDefault();
   requestAnimationFrame(() => {
@@ -699,6 +725,7 @@ window.GeoSolar = {
   setViewMode,
   setLang,
   map,
+  setBase,
   setFloor: (n) => {
     floor = Number(n);
     $("class-floor").value = String(n);
