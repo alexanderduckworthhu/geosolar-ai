@@ -1,4 +1,4 @@
-"""One-off Phase 0 inspection. Not part of the training pipeline."""
+"""One-off FileGDB inspection. Not part of the training pipeline."""
 
 from __future__ import annotations
 

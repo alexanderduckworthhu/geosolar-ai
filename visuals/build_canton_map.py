@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import struct
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -17,6 +18,9 @@ import pyogrio.raw as raw
 from matplotlib.path import Path as MplPath
 from pyproj import Transformer
 from shapely import from_wkb
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from theme import COPPER, INK, IRRADIATION, KLASSE_COLORS, LINE, MUTED, PAPER
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOF_VSI = (
@@ -32,10 +36,7 @@ BOUND_VSI = (
 OUT = ROOT / "visuals"
 OUT.mkdir(exist_ok=True)
 
-PAPER = "#EEF1F4"
-INK = "#1B2430"
-MUTED = "#5C6570"
-HIGHLIGHT = "#1B2430"
+HIGHLIGHT = COPPER
 
 # Official BFS canton number → ISO-style code
 BFS_TO_CODE = {
@@ -110,13 +111,10 @@ CITIES = [
     ("Chur", 9.5297, 46.8508),
 ]
 
-KLASSE_COLORS = {
-    1: "#6B7C93",
-    2: "#C4B056",
-    3: "#E09B2D",
-    4: "#E26A21",
-    5: "#C81E1E",
-}
+
+def count_k(rec, k):
+    c = rec["counts"]
+    return int(c.get(k, c.get(str(k), 0)))
 
 
 def unpack_read(out):
@@ -265,7 +263,7 @@ def irradiation_cmap():
 
     return LinearSegmentedColormap.from_list(
         "pv",
-        ["#F6E54C", "#F0C02E", "#E89A1C", "#E07016", "#D44512", "#C4281A", "#9B0F16"],
+        ["#1e3a2f", "#3f6b52", "#8a9a4a", "#d4a24a", "#e07a3d", "#f0c27a", "#f7e6c4"],
     )
 
 
@@ -299,7 +297,7 @@ def draw_base(ax, countries, cantons, colors, highlight=None, dim_others=False):
     for icc, rec in countries.items():
         if icc == "CH":
             continue
-        add_geom(ax, rec["geom"], facecolor="#DDE3E8", edgecolor="#C5CDD4", lw=0.3, zorder=0)
+        add_geom(ax, rec["geom"], facecolor="#15211c", edgecolor="#24332c", lw=0.3, zorder=0)
     for i, c in enumerate(cantons):
         is_hi = highlight is not None and i == highlight
         fc = colors[i]
@@ -309,7 +307,7 @@ def draw_base(ax, countries, cantons, colors, highlight=None, dim_others=False):
             ax,
             c["geom"],
             facecolor=fc,
-            edgecolor=HIGHLIGHT if is_hi else "#7A5140",
+            edgecolor=HIGHLIGHT if is_hi else "#5a6e62",
             lw=1.8 if is_hi else 0.35,
             zorder=3 if is_hi else 1,
         )
@@ -318,7 +316,7 @@ def draw_base(ax, countries, cantons, colors, highlight=None, dim_others=False):
         ax,
         countries["CH"]["geom"],
         facecolor="none",
-        edgecolor="#3A2A22",
+        edgecolor=INK,
         lw=0.9,
         zorder=4,
     )
@@ -359,7 +357,7 @@ def render_choropleth(cantons, countries, stats, values, vmin, vmax, title, subt
             ha="center",
             va="center",
             fontsize=6,
-            color="#3A2A22",
+            color=INK,
             alpha=0.85,
             zorder=5,
         )
@@ -368,7 +366,7 @@ def render_choropleth(cantons, countries, stats, values, vmin, vmax, title, subt
     cbar = fig.colorbar(sm, ax=ax, fraction=0.035, pad=0.02, shrink=0.72)
     cbar.set_label(cbar_label, color=MUTED, fontsize=8)
     cbar.ax.tick_params(labelsize=7, colors=MUTED)
-    fig.text(0.03, 0.96, "SOLAR RESOURCE MAP", fontsize=8, color="#C4281A", fontweight="medium")
+    fig.text(0.03, 0.96, "SOLAR RESOURCE MAP", fontsize=8, color=COPPER, fontweight="medium")
     fig.text(0.03, 0.925, title, fontsize=18, color=INK, fontweight="medium")
     fig.text(0.03, 0.895, subtitle, fontsize=9, color=MUTED)
     fig.text(
@@ -423,7 +421,7 @@ def render_tour(cantons, countries, stats, roofs, owner, tf, gif_path, mp4_path)
         fig = plt.figure(figsize=(16, 9), dpi=110)
         fig.patch.set_facecolor(PAPER)
         ax, axp = panel(fig, None)
-        fig.text(0.03, 0.95, "SOLAR RESOURCE MAP  ·  SWITZERLAND", color="#C4281A", fontsize=9)
+        fig.text(0.03, 0.95, "SOLAR RESOURCE MAP  ·  SWITZERLAND", color=COPPER, fontsize=9)
         fig.text(0.03, 0.905, "Rooftop irradiation by canton", color=INK, fontsize=18)
         fig.text(
             0.03,
@@ -459,7 +457,7 @@ def render_tour(cantons, countries, stats, roofs, owner, tf, gif_path, mp4_path)
         fig = plt.figure(figsize=(16, 9), dpi=110)
         fig.patch.set_facecolor(PAPER)
         ax, axp = panel(fig, ci)
-        fig.text(0.03, 0.95, "CANTON TOUR  ·  sunniest roofs first", color="#C4281A", fontsize=9)
+        fig.text(0.03, 0.95, "CANTON TOUR  ·  sunniest roofs first", color=COPPER, fontsize=9)
         fig.text(0.03, 0.905, f"{s['name']}   ({s['code']})", color=INK, fontsize=20)
         fig.text(0.03, 0.87, s["region"], color=MUTED, fontsize=10)
 
@@ -496,7 +494,7 @@ def render_tour(cantons, countries, stats, roofs, owner, tf, gif_path, mp4_path)
             y -= 0.07
 
         # class mix bar
-        counts = [s["counts"][k] for k in range(1, 6)]
+        counts = [count_k(s, k) for k in range(1, 6)]
         tot = sum(counts) or 1
         x0 = 0.06
         axp.text(0.06, 0.22, "Class mix", fontsize=9, color=MUTED, transform=axp.transAxes)
@@ -536,7 +534,7 @@ def render_tour(cantons, countries, stats, roofs, owner, tf, gif_path, mp4_path)
 
 
 def render_region_tour(cantons, countries, stats, tf, gif_path, mp4_path):
-    """Seven greater regions — shorter loop for LinkedIn."""
+    """Seven greater regions — shorter loop for a country tour."""
     import matplotlib.pyplot as plt
     import imageio.v2 as imageio
     from matplotlib.gridspec import GridSpec
@@ -576,7 +574,7 @@ def render_region_tour(cantons, countries, stats, tf, gif_path, mp4_path):
             [stats[i]["pct_class5"] for i in idxs],
             weights=[stats[i]["n_roofs_sample"] for i in idxs],
         )
-        mix = {k: sum(stats[i]["counts"][k] for i in idxs) for k in range(1, 6)}
+        mix = {k: sum(count_k(stats[i], k) for i in idxs) for k in range(1, 6)}
         names = ", ".join(stats[i]["code"] for i in idxs)
 
         fig = plt.figure(figsize=(16, 9), dpi=110)
@@ -595,7 +593,7 @@ def render_region_tour(cantons, countries, stats, tf, gif_path, mp4_path):
         ax.axis("off")
         for icc, rec in countries.items():
             if icc != "CH":
-                add_geom(ax, rec["geom"], facecolor="#DDE3E8", edgecolor="#C5CDD4", lw=0.3, zorder=0)
+                add_geom(ax, rec["geom"], facecolor="#15211c", edgecolor="#24332c", lw=0.3, zorder=0)
         for i, c in enumerate(cantons):
             fc = colors[i]
             on = i in hi
@@ -603,16 +601,16 @@ def render_region_tour(cantons, countries, stats, tf, gif_path, mp4_path):
                 ax,
                 c["geom"],
                 facecolor=fc if on else (*tuple(fc[:3]), 0.22),
-                edgecolor=HIGHLIGHT if on else "#B8A090",
+                edgecolor=HIGHLIGHT if on else "#5a6e62",
                 lw=1.4 if on else 0.3,
                 zorder=3 if on else 1,
             )
-        add_geom(ax, countries["CH"]["geom"], facecolor="none", edgecolor="#3A2A22", lw=0.9, zorder=4)
+        add_geom(ax, countries["CH"]["geom"], facecolor="none", edgecolor=INK, lw=0.9, zorder=4)
         add_city_labels(ax, tf)
         ax.set_xlim(2_480_000, 2_845_000)
         ax.set_ylim(1_070_000, 1_305_000)
 
-        fig.text(0.03, 0.95, "GREATER REGIONS  ·  BFS / NUTS-2", color="#C4281A", fontsize=9)
+        fig.text(0.03, 0.95, "GREATER REGIONS  ·  BFS / NUTS-2", color=COPPER, fontsize=9)
         fig.text(0.03, 0.905, rname, color=INK, fontsize=20)
         fig.text(0.03, 0.87, names, color=MUTED, fontsize=10)
 
@@ -653,25 +651,30 @@ def main():
     print("Loading cantons…")
     cantons = load_cantons()
     countries = load_country_parts()
-    roofs = load_roof_sample(250_000, seed=42)
-    xy = np.column_stack([roofs["e"], roofs["n"]])
-    print("Point-in-polygon…")
-    owner = assign_cantons(xy, cantons)
-    n_miss = int((owner < 0).sum())
-    print(f"unassigned {n_miss:,} / {len(owner):,}")
-    stats = aggregate(roofs, owner, cantons)
-    payload = {
-        "n_sample": int(len(owner)),
-        "n_unassigned": n_miss,
-        "seed": 42,
-        "boundary": "swissBOUNDARIES3D 2026 tlm_kantonsgebiet",
-        "cantons": [
-            {k: v for k, v in s.items()}
-            for s in stats
-        ],
-    }
-    (OUT / "canton_stats.json").write_text(json.dumps(payload, indent=2))
-    print(json.dumps(payload, indent=2)[:2500])
+    cache = OUT / "canton_stats.json"
+    if "--from-cache" in sys.argv and cache.exists():
+        payload = json.loads(cache.read_text())
+        stats = payload["cantons"]
+        roofs = None
+        owner = None
+        print("using cached canton_stats.json")
+    else:
+        roofs = load_roof_sample(250_000, seed=42)
+        xy = np.column_stack([roofs["e"], roofs["n"]])
+        print("Point-in-polygon…")
+        owner = assign_cantons(xy, cantons)
+        n_miss = int((owner < 0).sum())
+        print(f"unassigned {n_miss:,} / {len(owner):,}")
+        stats = aggregate(roofs, owner, cantons)
+        payload = {
+            "n_sample": int(len(owner)),
+            "n_unassigned": n_miss,
+            "seed": 42,
+            "boundary": "swissBOUNDARIES3D 2026 tlm_kantonsgebiet",
+            "cantons": [{k: v for k, v in s.items()} for s in stats],
+        }
+        cache.write_text(json.dumps(payload, indent=2))
+        print(json.dumps(payload, indent=2)[:2500])
 
     mvals = [s["mean_mstrahlung"] for s in stats]
     pvals = [s["pct_class4plus"] for s in stats]

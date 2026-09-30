@@ -11,6 +11,10 @@ import struct
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from theme import COPPER, INK, KLASSE_COLORS, KLASSE_LABELS, LINE, MUTED, PAPER
+
 import numpy as np
 import pyogrio
 import pyogrio.raw as raw
@@ -25,25 +29,6 @@ VSI = (
 LAYER = "SOLKAT_CH_DACH"
 OUT = ROOT / "visuals"
 OUT.mkdir(exist_ok=True)
-
-# Solar-cadastre sequential palette (low → excellent)
-KLASSE_COLORS = {
-    1: "#6B7C93",
-    2: "#C4B056",
-    3: "#E09B2D",
-    4: "#E26A21",
-    5: "#C81E1E",
-}
-KLASSE_LABELS = {
-    1: "gering  ·  low",
-    2: "mittel  ·  medium",
-    3: "gut  ·  good",
-    4: "sehr gut  ·  very good",
-    5: "hervorragend  ·  excellent",
-}
-PAPER = "#F6F3EE"
-INK = "#1C1C1C"
-MUTED = "#6A645C"
 
 CITIES = [
     # name, subtitle, lon, lat, radius_m
@@ -147,26 +132,19 @@ def load_national_sample(n_points=90000, seed=42):
 
 
 def scatter_city(ax, pts, east, north, radius, s=1.8, alpha=0.82):
-    from matplotlib.patches import Circle
+    from matplotlib.patches import RegularPolygon
 
     ax.set_facecolor(PAPER)
     ax.set_aspect("equal")
     ax.axis("off")
-    ax.set_xlim(east - radius * 1.02, east + radius * 1.02)
-    ax.set_ylim(north - radius * 1.02, north + radius * 1.02)
-    ring = Circle(
-        (east, north),
-        radius,
-        facecolor="none",
-        edgecolor="#D9D3C8",
-        lw=0.7,
-        zorder=10,
-    )
-    clip = Circle((east, north), radius, transform=ax.transData)
+    ax.set_xlim(east - radius * 1.08, east + radius * 1.08)
+    ax.set_ylim(north - radius * 1.08, north + radius * 1.08)
+    hex_kw = dict(numVertices=6, radius=radius, orientation=np.pi / 2)
+    ring = RegularPolygon((east, north), facecolor="none", edgecolor=COPPER, lw=0.9, zorder=10, **hex_kw)
+    clip = RegularPolygon((east, north), facecolor=PAPER, edgecolor="none", zorder=0, **hex_kw)
+    ax.add_patch(clip)
     ax.add_patch(ring)
-    ax.add_patch(
-        Circle((east, north), radius, facecolor=PAPER, edgecolor="none", zorder=0)
-    )
+    clip_path = RegularPolygon((east, north), transform=ax.transData, **hex_kw)
     order = np.argsort(pts["klasse"])
     for k in (1, 2, 3, 4, 5):
         m = pts["klasse"][order] == k
@@ -182,7 +160,7 @@ def scatter_city(ax, pts, east, north, radius, s=1.8, alpha=0.82):
             rasterized=True,
             zorder=k,
         )
-        sc.set_clip_path(clip)
+        sc.set_clip_path(clip_path)
 
 
 def add_legend(fig, y=0.06):
@@ -381,9 +359,9 @@ def render_aspect_plot(cities_data, path: Path):
         ax.tick_params(colors=MUTED, labelsize=8)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
-        ax.spines["left"].set_color("#D0CBC3")
-        ax.spines["bottom"].set_color("#D0CBC3")
-        ax.axvline(0, color="#D0CBC3", lw=0.6, ls="--")
+    ax.spines["left"].set_color(LINE)
+    ax.spines["bottom"].set_color(LINE)
+    ax.axvline(0, color=LINE, lw=0.6, ls="--")
     axes[0, 0].set_ylabel("Slope (°)", color=MUTED, fontsize=9)
     axes[1, 0].set_ylabel("Slope (°)", color=MUTED, fontsize=9)
     add_legend(fig, y=0.02)
@@ -420,8 +398,8 @@ def render_class_bars(path: Path):
     ax.set_title("10,071,755 Swiss roofs  ·  official suitability class", color=INK, fontsize=13, pad=10)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_color("#D0CBC3")
-    ax.spines["bottom"].set_color("#D0CBC3")
+    ax.spines["left"].set_color(LINE)
+    ax.spines["bottom"].set_color(LINE)
     ax.tick_params(colors=MUTED)
     ax.set_ylim(0, 3.4)
     fig.tight_layout()
@@ -430,13 +408,17 @@ def render_class_bars(path: Path):
     print("wrote", path)
 
 
+def take_arrays(pts, idx):
+    return {k: (v[idx] if isinstance(v, np.ndarray) else v) for k, v in pts.items()}
+
+
 def _downsample_city(pts, max_n=18000, seed=42):
     n = len(pts["e"])
     if n <= max_n:
         return pts
     rng = np.random.default_rng(seed)
     sl = rng.choice(n, size=max_n, replace=False)
-    return {k: v[sl] for k, v in pts.items()}
+    return take_arrays(pts, sl)
 
 
 def _fig_to_rgb(fig):
@@ -476,7 +458,7 @@ def animate_cities(cities_data, mp4_path: Path, gif_path: Path):
         for ax, rec in zip(axes.ravel(), plot_data):
             pts = rec["pts"]
             keep = pts["klasse"] <= k_max
-            shown = {k: v[keep] for k, v in pts.items()}
+            shown = take_arrays(pts, keep)
             scatter_city(ax, shown, rec["east"], rec["north"], rec["radius"], s=1.6)
             ax.text(
                 0.5,
@@ -579,26 +561,74 @@ def city_stats(rec):
     }
 
 
+def load_from_sample():
+    import pandas as pd
+
+    df = pd.read_csv(ROOT / "data/processed/roofs_sample.csv")
+    tf = Transformer.from_crs(4326, 2056, always_xy=True)
+    e, n = tf.transform(df["longitude"].to_numpy(), df["latitude"].to_numpy())
+    return {
+        "e": np.asarray(e, dtype=np.float64),
+        "n": np.asarray(n, dtype=np.float64),
+        "klasse": df["klasse"].to_numpy().astype(np.int16),
+        "NEIGUNG": df["slope_deg"].to_numpy(),
+        "FLAECHE": df["roof_area_m2"].to_numpy(),
+        "AUSRICHTUNG": df["aspect_deg"].to_numpy(),
+        "n_population": 10071755,
+    }
+
+
+def slice_city(national, lon, lat, radius):
+    tf = Transformer.from_crs(4326, 2056, always_xy=True)
+    east, north = tf.transform(lon, lat)
+    d2 = (national["e"] - east) ** 2 + (national["n"] - north) ** 2
+    m = d2 <= radius**2
+    return {k: (v[m] if hasattr(v, "__len__") and k != "n_population" else v) for k, v in national.items()}, east, north
+
+
 def main():
     tf = Transformer.from_crs(4326, 2056, always_xy=True)
     cities_data = []
-    print("Loading city roofs…")
-    for name, subtitle, lon, lat, radius in CITIES:
-        east, north = tf.transform(lon, lat)
-        print(f"  {name}  LV95=({east:.1f}, {north:.1f})")
-        pts = load_city(east, north, radius)
-        cities_data.append(
-            {
-                "name": name,
-                "subtitle": subtitle,
-                "east": east,
-                "north": north,
-                "radius": radius,
-                "lon": lon,
-                "lat": lat,
-                "pts": pts,
-            }
-        )
+    from_sample = "--from-sample" in sys.argv
+    if from_sample:
+        print("Loading roofs_sample.csv…")
+        national_all = load_from_sample()
+        city_r = 8000
+        for name, subtitle, lon, lat, _radius in CITIES:
+            pts, east, north = slice_city(national_all, lon, lat, city_r)
+            print(f"  {name} sample roofs={len(pts['e']):,}")
+            cities_data.append(
+                {
+                    "name": name,
+                    "subtitle": subtitle,
+                    "east": east,
+                    "north": north,
+                    "radius": city_r,
+                    "lon": lon,
+                    "lat": lat,
+                    "pts": pts,
+                }
+            )
+        national = national_all
+    else:
+        print("Loading city roofs…")
+        for name, subtitle, lon, lat, radius in CITIES:
+            east, north = tf.transform(lon, lat)
+            print(f"  {name}  LV95=({east:.1f}, {north:.1f})")
+            pts = load_city(east, north, radius)
+            cities_data.append(
+                {
+                    "name": name,
+                    "subtitle": subtitle,
+                    "east": east,
+                    "north": north,
+                    "radius": radius,
+                    "lon": lon,
+                    "lat": lat,
+                    "pts": pts,
+                }
+            )
+        national = None
 
     stats = {
         "national_n": 10071755,
@@ -607,7 +637,6 @@ def main():
         "source": "BFE Sonnendach.ch generalized FileGDB, inspected 2026-09-21",
     }
     (OUT / "visual_stats.json").write_text(json.dumps(stats, indent=2))
-    print(json.dumps(stats, indent=2))
 
     render_city_grid(cities_data, OUT / "swiss_cities_roofs.png")
     render_aspect_plot(cities_data, OUT / "city_roof_aspect.png")
@@ -617,9 +646,11 @@ def main():
     if skip_national:
         national = None
         print("Skipping national sample")
-    else:
+    elif national is None:
         print("Loading national sample…")
         national = load_national_sample(90000, seed=42)
+        render_switzerland(national, OUT / "switzerland_by_roofs.png")
+    else:
         render_switzerland(national, OUT / "switzerland_by_roofs.png")
 
     animate_cities(

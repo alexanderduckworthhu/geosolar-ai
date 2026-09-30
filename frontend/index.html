@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GeoSolar AI — Swiss Rooftop Solar Potential Predictor</title>
+    <title>GeoSolar AI — Swiss rooftop solar</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;family=Outfit:wght@400;500;600&amp;display=swap"
       rel="stylesheet"
     />
     <link
@@ -20,77 +20,109 @@
   </head>
   <body>
     <header class="top">
-      <p class="kicker">Sonnendach.ch · BFE / swisstopo / MeteoSwiss</p>
-      <h1>GeoSolar AI</h1>
-      <p class="lede">Swiss Rooftop Solar Potential Predictor</p>
+      <div class="brand">
+        <strong>GeoSolar</strong>
+        <span>AI</span>
+      </div>
+      <nav class="langs" id="langs" aria-label="Language">
+        <button type="button" data-lang="en" class="on">EN</button>
+        <button type="button" data-lang="de">DE</button>
+        <button type="button" data-lang="fr">FR</button>
+        <button type="button" data-lang="it">IT</button>
+      </nav>
     </header>
 
-    <main class="layout">
-      <section class="map-panel card">
-        <div id="map" role="application" aria-label="Map of Switzerland"></div>
-        <p class="hint">Click a rooftop. Coordinates are WGS84 latitude / longitude.</p>
-      </section>
+    <p class="caption" id="caption"></p>
 
-      <section class="form-panel card">
-        <form id="predict-form">
-          <label>
-            Latitude (°)
-            <input id="latitude" name="latitude" type="number" step="any" required />
-            <span class="hint">Click the map, or type a Swiss WGS84 latitude</span>
-          </label>
-          <label>
-            Longitude (°)
-            <input id="longitude" name="longitude" type="number" step="any" required />
-          </label>
-          <label>
-            Roof area (m²)
-            <input id="roof_area_m2" name="roof_area_m2" type="number" step="any" required />
-            <span class="hint">Tilted usable roof area (Sonnendach FLAECHE)</span>
-          </label>
-          <label>
-            Slope (°)
-            <input id="slope_deg" name="slope_deg" type="number" step="1" required />
-            <span class="hint">0 = flat, 89 = nearly vertical (NEIGUNG)</span>
-          </label>
-          <label>
-            Aspect (°)
-            <input id="aspect_deg" name="aspect_deg" type="range" min="-180" max="180" step="1" value="0" />
-            <span class="aspect-readout">
-              <span>N −180</span>
-              <strong id="aspect-value">0° south</strong>
-              <span>N +180</span>
-            </span>
-            <span class="hint">0 = south, −90 = east, +90 = west (AUSRICHTUNG)</span>
-          </label>
-          <button type="submit" id="predict-btn">PREDICT SOLAR POTENTIAL</button>
-          <button type="button" id="example-btn" class="ghost">Load a real test roof</button>
-        </form>
-
-        <div id="result" class="result" hidden>
-          <p class="result-kicker">Predicted KLASSE</p>
-          <p id="result-class" class="result-class"></p>
-          <p id="result-label" class="result-label"></p>
-          <div id="proba" class="proba"></div>
-          <p class="note">
-            Shading from neighbouring buildings is not in these features. Official
-            Sonnendach.ch classes include it; this model cannot.
-          </p>
+    <div class="stage">
+      <div class="map-wrap">
+        <div class="globe">
+          <svg class="bezel" viewBox="0 0 100 100" aria-hidden="true">
+            <polygon
+              class="hex-stroke"
+              points="50,4 91,27 91,73 50,96 9,73 9,27"
+              fill="none"
+            />
+            <g class="ticks">
+              <line x1="50" y1="0.5" x2="50" y2="3.2" />
+              <line x1="99.2" y1="50" x2="96.5" y2="50" />
+              <line x1="50" y1="99.5" x2="50" y2="96.8" />
+              <line x1="0.8" y1="50" x2="3.5" y2="50" />
+            </g>
+            <text x="50" y="8.2" text-anchor="middle">N</text>
+            <text x="94.6" y="51.2" text-anchor="middle">E</text>
+            <text x="50" y="94.5" text-anchor="middle">S</text>
+            <text x="5.6" y="51.2" text-anchor="middle">W</text>
+          </svg>
+          <div id="map" role="application" aria-label="Switzerland solar map"></div>
+          <div class="scale" id="scale"><i></i> 50 km</div>
+          <p class="credit">Esri, Maxar, Earthstar Geographics</p>
         </div>
-        <p id="error" class="error" hidden></p>
-      </section>
-    </main>
+        <p class="hint" id="hint"></p>
+      </div>
 
-    <footer>
-      Data: BFE / swisstopo / MeteoSwiss (Sonnendach.ch).
-      <a href="/docs">API docs</a>.
-      Student project: DIT323.
-    </footer>
+      <aside class="panel">
+        <div class="view-row" id="view-row">
+          <button type="button" data-view="hex" class="on" id="btn-hex"></button>
+          <button type="button" data-view="roofs" id="btn-roofs"></button>
+        </div>
+
+        <div class="city-row" id="city-row"></div>
+
+        <label class="slider-block">
+          <span id="lbl-floor"></span>
+          <strong id="floor-label">1</strong>
+          <input id="class-floor" type="range" min="1" max="5" step="1" value="1" />
+        </label>
+
+        <div class="mode-row" id="mode-row">
+          <button type="button" data-mode="mean" class="on" id="btn-mean"></button>
+          <button type="button" data-mode="pct4" id="btn-pct4"></button>
+        </div>
+
+        <div id="stats">
+          <p class="place-kicker" id="place-kicker"></p>
+          <h2 id="place-name"></h2>
+          <p class="sub" id="place-sub"></p>
+
+          <div class="metrics">
+            <div>
+              <b id="m-mean">—</b>
+              <span id="lbl-mean-metric"></span>
+            </div>
+            <div>
+              <b id="m-pct4">—</b>
+              <span id="lbl-pct-metric"></span>
+            </div>
+          </div>
+
+          <p class="insight" id="insight"></p>
+
+          <p class="chart-title" id="chart-title"></p>
+          <div class="stack" id="bars"></div>
+          <div class="axis">
+            <span id="axis-low"></span>
+            <span id="axis-high"></span>
+          </div>
+
+          <p class="baseline" id="baseline"></p>
+
+          <div class="legend">
+            <span><i class="dot moss"></i><span id="leg-low"></span></span>
+            <span><i class="dot mid"></i><span id="leg-good"></span></span>
+            <span><i class="dot sun"></i><span id="leg-ex"></span></span>
+            <span><i class="dot empty"></i><span id="leg-floor"></span></span>
+          </div>
+        </div>
+      </aside>
+    </div>
 
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
+    <script src="i18n.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

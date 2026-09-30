@@ -1,7 +1,6 @@
-# GeoSolar AI — Phase 0 dataset report
+# GeoSolar AI — dataset notes
 
-**Project:** GeoSolar AI — Swiss Rooftop Solar Potential Predictor  
-**Course:** DIT323 Artificial Intelligence as a Service  
+**Project:** GeoSolar AI — Swiss rooftop solar suitability  
 **Dataset:** *Eignung von Hausdächern für die Nutzung von Sonnenenergie* (Sonnendach.ch)  
 **Publisher:** Swiss Federal Office of Energy (BFE / SFOE), with swisstopo (swissBUILDINGS3D) and MeteoSwiss radiation  
 **Inspection date:** 2026-09-21  
@@ -13,7 +12,7 @@
 
 | Source | URL | What it provided |
 | --- | --- | --- |
-| opendata.swiss dataset | https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie | Canonical landing page (submission link) |
+| opendata.swiss dataset | https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie | Canonical landing page |
 | CKAN API | https://ckan.opendata.swiss/api/3/action/package_show?id=eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie | 11 resources (WMS/WMTS, 3× GPKG, 3× GDB, map preview, REST API) |
 | geo.admin.ch STAC collection | https://data.geo.admin.ch/api/stac/v1/collections/ch.bfe.solarenergie-eignung-daecher | `proj:epsg = 2056`; same six download assets |
 | STAC item | https://data.geo.admin.ch/api/stac/v1/collections/ch.bfe.solarenergie-eignung-daecher/items/solarenergie-eignung-daecher | Exact asset hrefs + checksums |
@@ -108,7 +107,7 @@ There are **no latitude/longitude columns** and **no canton/municipality columns
 | 2,672,500.458 | 1,220,466.564 | 8.394234 | 47.131213 |
 | 2,672,501.473 | 1,220,466.251 | 8.394247 | 47.131211 |
 
-**Plan for the API:** never compute centroids in EPSG:4326. For this generalized file, take the MultiPoint coordinates already in EPSG:2056 and convert with `pyproj`. If Phase 1 instead uses the non-generalized polygon GDB, compute polygon centroids in EPSG:2056 first, then convert.
+**Plan for the API:** never compute centroids in EPSG:4326. For this generalized file, take the MultiPoint coordinates already in EPSG:2056 and convert with `pyproj`. If the non-generalized polygon GDB is used later, compute polygon centroids in EPSG:2056 first, then convert.
 
 ### 4.3 Roof-related (physical)
 
@@ -244,9 +243,9 @@ Classes are unbalanced but all five are well populated. Stratified sampling and 
 
 **Classification of `KLASSE` (1–5), mapped to official labels gering / mittel / gut / sehr gut / hervorragend.**
 
-This is option (a) in the assignment: a categorical suitability class already exists, with documented codes.
+A categorical suitability class already exists, with documented codes.
 
-We will **not** train on `STROMERTRAG` / `MSTRAHLUNG` as the target for the student API: those are the official physics outputs, and using them as *inputs* would leak (next section). Predicting `KLASSE` from roof geometry + location is the legitimate “what a homeowner can type / click” problem.
+`STROMERTRAG` and `MSTRAHLUNG` are official physics outputs. Using them as *inputs* would leak the label (next section). Predicting `KLASSE` from roof geometry and location is what a visitor can type or click.
 
 ---
 
@@ -297,13 +296,13 @@ No elevation field (not in the data). No radiation field (leaks).
 
 ---
 
-## 10. Sampling plan (full file is too large for a student laptop)
+## 10. Sampling plan
 
 - **Population:** 10,071,755 roofs in the inspected generalized annual FileGDB.  
-- **RAM/disk:** 16 GB RAM; unzipped table ~1.6 GB attributes. Training RandomForest on 10 M rows is unnecessary for this assignment and would bloat `model_pipeline.joblib`.  
+- **RAM/disk:** 16 GB RAM; unzipped table ~1.6 GB attributes. Training RandomForest on 10 M rows would bloat `model_pipeline.joblib` without a matching gain for this demo.  
 - **There is no canton column.** Geographic spread must use LV95 coordinates, not cantons.
 
-**Exact rule (to implement in `prepare_data.py` after approval):**
+**Exact rule (implemented in `prepare_data.py`):**
 
 1. Read `SOLKAT_CH_DACH` **without loading unused yield columns**. Keep `KLASSE`, `FLAECHE`, `NEIGUNG`, `AUSRICHTUNG`, and `SHAPE`.
 2. Parse each MultiPoint in EPSG:2056; convert E/N → lon/lat with `pyproj` (`always_xy=True`, EPSG:2056 → EPSG:4326). Do **not** reproject before extracting coordinates.
@@ -342,7 +341,7 @@ Optional inside the pipeline only (deterministic, not extra user fields): `aspec
 - `RandomForestClassifier(n_estimators=100, max_depth=16, min_samples_leaf=5, n_jobs=-1, random_state=42, class_weight=None)`  
   Depth/trees kept modest so `model/model_pipeline.joblib` stays well under 100 MB (`joblib.dump(..., compress=3)`).
 
-Why RF: nonlinear effects (south-facing steep roofs vs north-facing), no need for feature scaling, feature importances for the presentation, standard for this course level.
+Why RF: nonlinear effects (south-facing steep roofs vs north-facing), no need for feature scaling, and readable feature importances.
 
 ### Split and metrics
 
@@ -351,7 +350,7 @@ Why RF: nonlinear effects (south-facing steep roofs vs north-facing), no need fo
 - Test metrics written to `model/metrics.json` by training code (never hand-typed): accuracy, macro-F1, per-class precision/recall, confusion matrix, feature importances, train/test sizes, sklearn version, date, feature min/max from **training** fold only.
 - Success criterion (qualitative): accuracy and macro-F1 clearly above the majority baseline; class 5 (8.5%) must not be ignored (hence macro-F1).
 
-### Architecture (after approval)
+### Architecture
 
 ```
 geosolar-ai/
@@ -367,7 +366,7 @@ FastAPI loads the **artifact once** (lifespan), never retrains. Frontend `POST /
 
 ---
 
-## 12. Risks / things to double-check before Phase 1
+## 12. Limits to keep in mind
 
 1. Generalized geometry is **MultiPoint**, not polygons. Centroids of true roof polygons would require downloading `solarenergie-eignung-daecher_2056.gdb.zip` (**1,398,008,884 bytes**). Proposal: use the already-downloaded generalized points unless you want that extra 1.4 GB.
 2. Tiny roofs exist (`FLAECHE` down to 0.01 m²). The form should still validate against training min/max.
@@ -389,4 +388,4 @@ FastAPI loads the **artifact once** (lifespan), never retrains. Frontend `POST /
 | Model | RandomForestClassifier in one sklearn Pipeline |
 | API | FastAPI loads `model_pipeline.joblib` only |
 
-Reply **approved** in chat to start Phase 1.
+These decisions are implemented in `training/` and `app/`.

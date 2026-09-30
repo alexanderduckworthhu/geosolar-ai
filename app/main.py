@@ -45,8 +45,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="GeoSolar AI",
     description=(
-        "Swiss rooftop solar suitability (Sonnendach.ch KLASSE 1–5). "
-        "The API only loads a saved sklearn Pipeline; it never trains. "
+        "Geospatial solar suitability for Swiss roofs (Sonnendach.ch KLASSE 1–5). "
+        "Loads a saved sklearn Pipeline; it never trains at request time. "
         "Request bounds are the training-fold min/max from model/metrics.json."
     ),
     version="1.0.0",
