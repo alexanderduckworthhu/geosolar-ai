@@ -169,7 +169,7 @@ body {
 
 #map.no-base .leaflet-tile-pane,
 #map.no-base .leaflet-labels-pane {
-  display: none;
+  display: none !important;
 }
 
 .roof-canvas {

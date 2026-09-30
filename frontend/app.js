@@ -43,29 +43,28 @@ map.createPane("labels");
 map.getPane("labels").style.zIndex = 350;
 map.getPane("labels").style.pointerEvents = "none";
 
-L.tileLayer(
+const imageryLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   {
     maxZoom: 19,
     maxNativeZoom: 19,
   }
-).addTo(map);
-
-L.tileLayer(
+);
+const roadsLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
   {
     pane: "labels",
     maxZoom: 19,
   }
-).addTo(map);
-
-L.tileLayer(
+);
+const placesLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
   {
     pane: "labels",
     maxZoom: 19,
   }
-).addTo(map);
+);
+const BASE_LAYERS = [imageryLayer, roadsLayer, placesLayer];
 
 function lerpColor(a, b, t) {
   const pa = a.match(/\w\w/g).map((x) => parseInt(x, 16));
@@ -556,6 +555,17 @@ function setBase(on) {
   $("map").classList.toggle("no-base", !showBase);
   $("btn-base-on").classList.toggle("on", showBase);
   $("btn-base-off").classList.toggle("on", !showBase);
+  BASE_LAYERS.forEach((lyr) => {
+    if (showBase) {
+      if (!map.hasLayer(lyr)) lyr.addTo(map);
+    } else if (map.hasLayer(lyr)) {
+      map.removeLayer(lyr);
+    }
+  });
+  const tilePane = map.getPane("tilePane");
+  const labelPane = map.getPane("labels");
+  if (tilePane) tilePane.style.display = showBase ? "" : "none";
+  if (labelPane) labelPane.style.display = showBase ? "" : "none";
   if (layer) layer.eachLayer((l) => l.setStyle(styleHex(l.feature.properties)));
 }
 
