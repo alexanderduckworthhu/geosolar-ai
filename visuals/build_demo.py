@@ -166,21 +166,24 @@ def record_live():
             page = context.new_page()
             page.goto(f"http://127.0.0.1:{port}/?demo=1", wait_until="domcontentloaded")
             wait_ready(page)
-            page.evaluate("GeoSolar.setViewMode('hex')")
-            wait_tiles(page, min_ok=4, extra_ms=1600)
+            wait_tiles(page, min_ok=8, extra_ms=2000)
 
-            # 1 Switzerland hex over imagery
+            # 1 default: Switzerland roofs, map on
             shots.append(grab(page))
 
-            # 2 class floor 4
+            # 2 hex neighbourhoods
+            act(page, "GeoSolar.setViewMode('hex')", min_ok=4, extra_ms=1200)
+            shots.append(grab(page))
+
+            # 3 class floor 4
             act(page, "GeoSolar.setFloor(4)", extra_ms=700)
             shots.append(grab(page))
 
-            # 3 colour by share of class 4–5
+            # 4 colour by share of class 4–5
             act(page, "GeoSolar.setFloor(1); GeoSolar.setMode('pct4')", extra_ms=700)
             shots.append(grab(page))
 
-            # 4 Sion, map on
+            # 5 Sion, map on
             act(
                 page,
                 "GeoSolar.setMode('mean'); GeoSolar.goCity('vs')",
@@ -189,28 +192,28 @@ def record_live():
             )
             shots.append(grab(page))
 
-            # 5 Zürich hex, streets through cells
+            # 6 Zürich hex, streets through cells
             act(page, "GeoSolar.goCity('zh')", min_ok=8, extra_ms=1800)
             shots.append(grab(page))
 
-            # 6 No map
+            # 7 No map
             act(page, "GeoSolar.setBase(false)", extra_ms=800, wait_map=False)
             shots.append(grab(page))
 
-            # 7 Map back, each roof on Zürich
+            # 8 Map back defaults to each roof on Zürich
             act(
                 page,
-                "GeoSolar.setBase(true); GeoSolar.setViewMode('roofs')",
+                "GeoSolar.setBase(true)",
                 min_ok=10,
                 extra_ms=2800,
             )
             shots.append(grab(page))
 
-            # 8 German UI
+            # 9 German UI
             act(page, "GeoSolar.setLang('de')", min_ok=10, extra_ms=1400)
             shots.append(grab(page))
 
-            # 9 national hex, French, map on
+            # 10 national hex, French, map on
             act(
                 page,
                 "GeoSolar.setLang('fr'); GeoSolar.setViewMode('hex'); GeoSolar.goCity('ch')",
@@ -259,7 +262,7 @@ def main():
 
     print("capturing live explorer…")
     shots = record_live()
-    durations = [2.4, 2.0, 2.0, 2.4, 2.4, 2.6, 3.0, 2.0, 2.2]
+    durations = [2.8, 2.2, 2.0, 2.0, 2.4, 2.4, 2.4, 3.0, 2.0, 2.2]
     for im, sec in zip(shots, durations):
         hold(frames, im, sec)
 

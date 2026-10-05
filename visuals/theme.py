@@ -29,7 +29,7 @@ IRRADIATION = [
     "#e07a3d",
     "#e2a45a",
     "#a8b0b8",
-    "#4f8ec9",
+    "#5b9ad4",
     "#2d6cdf",
-    "#dce8f6",
+    "#1a4fbf",
 ]

@@ -261,10 +261,7 @@ def aggregate(roofs, owner, cantons):
 def irradiation_cmap():
     from matplotlib.colors import LinearSegmentedColormap
 
-    return LinearSegmentedColormap.from_list(
-        "pv",
-        ["#1e3a2f", "#3f6b52", "#8a9a4a", "#d4a24a", "#e07a3d", "#f0c27a", "#f7e6c4"],
-    )
+    return LinearSegmentedColormap.from_list("pv", IRRADIATION)
 
 
 def color_for(values, vmin, vmax):
