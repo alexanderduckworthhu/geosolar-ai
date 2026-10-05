@@ -94,8 +94,7 @@ def load_city(east, north, radius, max_features=None):
         )
     )
     pts = arrays_to_points(meta, geometry, arrays)
-    d2 = (pts["e"] - east) ** 2 + (pts["n"] - north) ** 2
-    mask = d2 <= radius**2
+    mask = (np.abs(pts["e"] - east) <= radius) & (np.abs(pts["n"] - north) <= radius)
     out = {k: v[mask] for k, v in pts.items()}
     print(f"    bbox hits={len(pts['e']):,}  in-circle={len(out['e']):,}")
     return out
@@ -132,19 +131,21 @@ def load_national_sample(n_points=90000, seed=42):
 
 
 def scatter_city(ax, pts, east, north, radius, s=1.8, alpha=0.82):
-    from matplotlib.patches import RegularPolygon
+    from matplotlib.patches import Rectangle
 
     ax.set_facecolor(PAPER)
     ax.set_aspect("equal")
     ax.axis("off")
-    ax.set_xlim(east - radius * 1.08, east + radius * 1.08)
-    ax.set_ylim(north - radius * 1.08, north + radius * 1.08)
-    hex_kw = dict(numVertices=6, radius=radius, orientation=np.pi / 2)
-    ring = RegularPolygon((east, north), facecolor="none", edgecolor=COPPER, lw=0.9, zorder=10, **hex_kw)
-    clip = RegularPolygon((east, north), facecolor=PAPER, edgecolor="none", zorder=0, **hex_kw)
-    ax.add_patch(clip)
+    pad = radius * 1.06
+    ax.set_xlim(east - pad, east + pad)
+    ax.set_ylim(north - pad, north + pad)
+    xy = (east - radius, north - radius)
+    size = 2 * radius
+    fill = Rectangle(xy, size, size, facecolor=PAPER, edgecolor="none", zorder=0)
+    ring = Rectangle(xy, size, size, facecolor="none", edgecolor=LINE, lw=0.8, zorder=10)
+    ax.add_patch(fill)
     ax.add_patch(ring)
-    clip_path = RegularPolygon((east, north), transform=ax.transData, **hex_kw)
+    clip_path = Rectangle(xy, size, size, transform=ax.transData)
     order = np.argsort(pts["klasse"])
     for k in (1, 2, 3, 4, 5):
         m = pts["klasse"][order] == k
@@ -243,7 +244,7 @@ def render_city_grid(cities_data, path: Path):
         ax.text(
             0.5,
             -0.02,
-            f"{len(rec['pts']['e']):,} roofs in {rec['radius']/1000:.1f} km",
+            f"{len(rec['pts']['e']):,} roofs in {rec['radius']/1000:.1f} km square",
             transform=ax.transAxes,
             ha="center",
             va="top",
@@ -581,8 +582,7 @@ def load_from_sample():
 def slice_city(national, lon, lat, radius):
     tf = Transformer.from_crs(4326, 2056, always_xy=True)
     east, north = tf.transform(lon, lat)
-    d2 = (national["e"] - east) ** 2 + (national["n"] - north) ** 2
-    m = d2 <= radius**2
+    m = (np.abs(national["e"] - east) <= radius) & (np.abs(national["n"] - north) <= radius)
     return {k: (v[m] if hasattr(v, "__len__") and k != "n_population" else v) for k, v in national.items()}, east, north
 
 

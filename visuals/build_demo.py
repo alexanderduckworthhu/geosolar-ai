@@ -102,9 +102,11 @@ def wait_tiles(page, min_ok=4, extra_ms=1100):
         page.wait_for_function(
             f"""() => {{
               const imgs = [...document.querySelectorAll('.leaflet-tile-pane img')];
-              return imgs.filter(i => i.complete && i.naturalWidth > 0).length >= {min_ok};
+              if (imgs.length < {min_ok}) return false;
+              const done = imgs.filter(i => i.complete && i.naturalWidth > 0).length;
+              return done === imgs.length && done >= {min_ok};
             }}""",
-            timeout=20000,
+            timeout=25000,
         )
     except Exception:
         pass
@@ -181,13 +183,13 @@ def record_live():
             act(
                 page,
                 "GeoSolar.setMode('mean'); GeoSolar.goCity('vs')",
-                min_ok=4,
-                extra_ms=1400,
+                min_ok=8,
+                extra_ms=1800,
             )
             shots.append(grab(page))
 
             # 5 Zürich hex, streets through cells
-            act(page, "GeoSolar.goCity('zh')", min_ok=4, extra_ms=1500)
+            act(page, "GeoSolar.goCity('zh')", min_ok=8, extra_ms=1800)
             shots.append(grab(page))
 
             # 6 No map
@@ -198,13 +200,13 @@ def record_live():
             act(
                 page,
                 "GeoSolar.setBase(true); GeoSolar.setViewMode('roofs')",
-                min_ok=4,
-                extra_ms=1800,
+                min_ok=10,
+                extra_ms=2800,
             )
             shots.append(grab(page))
 
             # 8 German UI
-            act(page, "GeoSolar.setLang('de')", min_ok=4, extra_ms=600)
+            act(page, "GeoSolar.setLang('de')", min_ok=10, extra_ms=1400)
             shots.append(grab(page))
 
             # 9 national hex, French, map on
