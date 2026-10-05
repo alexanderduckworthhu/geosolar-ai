@@ -2,7 +2,7 @@ const I18N = {
   en: {
     title: "GeoSolar AI — Swiss rooftop solar",
     captionHex:
-      'Tap a cell. <span class="em">Copper</span> is high suitability (class 4–5). <span class="dim">Pine</span> is low (class 1–2). Cells are 2.4 km clusters from Sonnendach.ch.',
+      'Tap a cell. <span class="em">Blue</span> is high suitability (class 4–5). <span class="dim">Orange</span> is low (class 1–2). Cells are 2.4 km clusters from Sonnendach.ch.',
     captionRoofs:
       'Each mark is <span class="em">one sampled roof</span> — the official Sonnendach MultiPoint, not a neighbourhood average.',
     hintHex: "Hover to preview · click to pin · scroll to zoom",
@@ -50,7 +50,7 @@ const I18N = {
   de: {
     title: "GeoSolar AI — Schweizer Dachflächen",
     captionHex:
-      'Zelle wählen. <span class="em">Kupfer</span> steht für hohe Eignung (Klasse 4–5). <span class="dim">Kiefer</span> für geringe (Klasse 1–2). Zellen: 2,4 km aus Sonnendach.ch.',
+      'Zelle wählen. <span class="em">Blau</span> steht für hohe Eignung (Klasse 4–5). <span class="dim">Orange</span> für geringe (Klasse 1–2). Zellen: 2,4 km aus Sonnendach.ch.',
     captionRoofs:
       'Jeder Punkt ist <span class="em">ein beprobtes Dach</span> — der offizielle Sonnendach-MultiPoint, kein Nachbarschaftsmittel.',
     hintHex: "Hover prüft · Klick pinnt · Scroll zoomt",
@@ -98,7 +98,7 @@ const I18N = {
   fr: {
     title: "GeoSolar AI — Toits solaires suisses",
     captionHex:
-      'Choisissez une cellule. Le <span class="em">cuivre</span> signale une haute aptitude (classes 4–5). Le <span class="dim">vert pin</span> une faible (classes 1–2). Cellules de 2,4 km, Sonnendach.ch.',
+      'Choisissez une cellule. Le <span class="em">bleu</span> signale une haute aptitude (classes 4–5). L’<span class="dim">orange</span> une faible (classes 1–2). Cellules de 2,4 km, Sonnendach.ch.',
     captionRoofs:
       'Chaque marque est <span class="em">un toit échantillonné</span> — le MultiPoint officiel Sonnendach, pas une moyenne de quartier.',
     hintHex: "Survoler pour prévisualiser · cliquer pour épingler · défiler pour zoomer",
@@ -146,7 +146,7 @@ const I18N = {
   it: {
     title: "GeoSolar AI — Tetti solari svizzeri",
     captionHex:
-      'Scegli una cella. Il <span class="em">rame</span> indica alta idoneità (classi 4–5). Il <span class="dim">verde pino</span> indica bassa (classi 1–2). Celle da 2,4 km, Sonnendach.ch.',
+      'Scegli una cella. Il <span class="em">blu</span> indica alta idoneità (classi 4–5). L’<span class="dim">arancio</span> indica bassa (classi 1–2). Celle da 2,4 km, Sonnendach.ch.',
     captionRoofs:
       'Ogni segno è <span class="em">un tetto campionato</span> — il MultiPoint ufficiale Sonnendach, non una media di quartiere.',
     hintHex: "Passa per l’anteprima · clicca per fissare · scorri per lo zoom",

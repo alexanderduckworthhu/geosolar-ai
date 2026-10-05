@@ -166,6 +166,7 @@ def record_live():
             page = context.new_page()
             page.goto(f"http://127.0.0.1:{port}/?demo=1", wait_until="domcontentloaded")
             wait_ready(page)
+            page.evaluate("GeoSolar.setViewMode('hex')")
             wait_tiles(page, min_ok=4, extra_ms=1600)
 
             # 1 Switzerland hex over imagery

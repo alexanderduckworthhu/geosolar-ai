@@ -7,8 +7,13 @@
   --ember: #c45c28;
   --sun: #f0c27a;
   --moss: #3f6b52;
-  --mid: #d4a24a;
+  --mid: #a8b0b8;
   --line: #24332c;
+  --class-1: #e07a3d;
+  --class-2: #e2a45a;
+  --class-3: #a8b0b8;
+  --class-4: #4f8ec9;
+  --class-5: #2d6cdf;
 }
 
 * {
@@ -94,10 +99,10 @@ body {
 }
 
 .caption .em {
-  color: var(--copper);
+  color: var(--class-5);
 }
 .caption .dim {
-  color: #9bb5a6;
+  color: var(--class-1);
 }
 
 .stage {
@@ -180,13 +185,13 @@ body {
   display: inline-block;
 }
 .dot.moss {
-  background: var(--moss);
+  background: var(--class-1);
 }
 .dot.mid {
-  background: var(--mid);
+  background: var(--class-3);
 }
 .dot.sun {
-  background: var(--sun);
+  background: var(--class-5);
 }
 .dot.empty {
   background: #15211c;
@@ -262,7 +267,7 @@ body {
 .slider-block input {
   grid-column: 1 / -1;
   width: 100%;
-  accent-color: var(--copper);
+  accent-color: var(--class-5);
 }
 
 .place-kicker {

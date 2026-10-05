@@ -9,11 +9,11 @@ LINE = "#24332c"
 MOSS = "#3f6b52"
 
 KLASSE_COLORS = {
-    1: "#3f6b52",
-    2: "#8a9a4a",
-    3: "#d4a24a",
-    4: "#e07a3d",
-    5: "#f0c27a",
+    1: "#e07a3d",
+    2: "#e2a45a",
+    3: "#a8b0b8",
+    4: "#4f8ec9",
+    5: "#2d6cdf",
 }
 
 KLASSE_LABELS = {
@@ -25,11 +25,11 @@ KLASSE_LABELS = {
 }
 
 IRRADIATION = [
-    "#1e3a2f",
-    "#3f6b52",
-    "#8a9a4a",
-    "#d4a24a",
+    "#c45c28",
     "#e07a3d",
-    "#f0c27a",
-    "#f7e6c4",
+    "#e2a45a",
+    "#a8b0b8",
+    "#4f8ec9",
+    "#2d6cdf",
+    "#dce8f6",
 ]

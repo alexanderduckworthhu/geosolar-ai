@@ -1,4 +1,4 @@
-const CLASS_COLORS = ["#3f6b52", "#8a9a4a", "#d4a24a", "#e07a3d", "#f0c27a"];
+const CLASS_COLORS = ["#e07a3d", "#e2a45a", "#a8b0b8", "#4f8ec9", "#2d6cdf"];
 const TAU = Math.PI * 2;
 
 const $ = (id) => document.getElementById(id);
@@ -9,11 +9,11 @@ if (!I18N[lang]) lang = "en";
 
 let DATA = null;
 let ROOFS = null;
-let view = "hex";
 let mode = "mean";
 let cityId = "ch";
 let floor = 1;
 let showBase = localStorage.getItem("geosolar-base") !== "off";
+let view = showBase ? "roofs" : "hex";
 let pinned = null;
 let layer = null;
 let hoverId = null;
@@ -97,7 +97,7 @@ function colorForHex(hex) {
   if (hex.mean_klasse < floor) return "#101a16";
   if (mode === "pct4") {
     const tPct = Math.min(1, hex.pct4 / 55);
-    return lerpColor("1e3a2f", "f0c27a", tPct);
+    return lerpColor("e07a3d", "2d6cdf", tPct);
   }
   const x = hex.mean_klasse;
   const i = Math.max(0, Math.min(3, Math.floor(x) - 1));
@@ -107,7 +107,7 @@ function colorForHex(hex) {
 
 function colorForRoof(k) {
   if (k < floor) return "#15211c";
-  if (mode === "pct4") return k >= 4 ? "#f0c27a" : "#1e3a2f";
+  if (mode === "pct4") return k >= 4 ? "#2d6cdf" : "#e07a3d";
   return CLASS_COLORS[k - 1];
 }
 
@@ -215,6 +215,12 @@ function renderBars(counts) {
     .join("");
 }
 
+function paintFloorLabel() {
+  const el = $("floor-label");
+  el.textContent = String(floor);
+  el.style.color = CLASS_COLORS[floor - 1];
+}
+
 function fmt(n) {
   return Math.round(n).toLocaleString(t().locale);
 }
@@ -299,7 +305,7 @@ function styleHex(hex) {
   const hovered = hoverId && hoverId.q === hex.q && hoverId.r === hex.r;
   const dim = hex.mean_klasse < floor;
   return {
-    color: active ? "#f7e6c4" : hovered ? "#e07a3d" : showBase ? "rgba(243,234,220,0.35)" : "rgba(243,234,220,0.22)",
+    color: active ? "#dce8f6" : hovered ? "#4f8ec9" : showBase ? "rgba(243,234,220,0.35)" : "rgba(243,234,220,0.22)",
     weight: active ? 2.2 : hovered ? 1.6 : showBase ? 0.7 : 0.55,
     fillColor: colorForHex(hex),
     fillOpacity: dim
@@ -550,7 +556,9 @@ function applyLang() {
 }
 
 function setBase(on) {
-  showBase = Boolean(on);
+  const next = Boolean(on);
+  const turningOn = next && !showBase;
+  showBase = next;
   localStorage.setItem("geosolar-base", showBase ? "on" : "off");
   $("map").classList.toggle("no-base", !showBase);
   $("btn-base-on").classList.toggle("on", showBase);
@@ -566,6 +574,10 @@ function setBase(on) {
   const labelPane = map.getPane("labels");
   if (tilePane) tilePane.style.display = showBase ? "" : "none";
   if (labelPane) labelPane.style.display = showBase ? "" : "none";
+  if (turningOn) {
+    setViewMode("roofs");
+    return;
+  }
   if (layer) layer.eachLayer((l) => l.setStyle(styleHex(l.feature.properties)));
 }
 
@@ -667,6 +679,7 @@ async function init() {
     row.appendChild(b);
   });
   document.querySelectorAll("#view-row button").forEach((b) => {
+    b.classList.toggle("on", b.dataset.view === view);
     b.addEventListener("click", () => setViewMode(b.dataset.view));
   });
   document.querySelectorAll("#base-row button").forEach((b) => {
@@ -684,7 +697,7 @@ async function init() {
   });
   $("class-floor").addEventListener("input", (e) => {
     floor = Number(e.target.value);
-    $("floor-label").textContent = String(floor);
+    paintFloorLabel();
     paint();
   });
   map.on("click", (e) => {
@@ -720,6 +733,7 @@ async function init() {
   });
   addCityLabels();
   setBase(showBase);
+  paintFloorLabel();
   paint();
   showDefault();
   requestAnimationFrame(() => {
@@ -739,7 +753,7 @@ window.GeoSolar = {
   setFloor: (n) => {
     floor = Number(n);
     $("class-floor").value = String(n);
-    $("floor-label").textContent = String(n);
+    paintFloorLabel();
     paint();
   },
   setMode: (m) => {
