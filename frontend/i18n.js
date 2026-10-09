@@ -1,6 +1,18 @@
 const I18N = {
   en: {
     title: "GeoSolar AI — Swiss rooftop solar",
+    navMap: "Map",
+    navAbout: "About",
+    aboutTitle: "About GeoSolar AI",
+    aboutHtml: `
+      <h1>About</h1>
+      <p class="lead">A small map of Swiss rooftops and how well they suit solar panels.</p>
+      <p>Switzerland has already rated about 10 million roofs (Sonnendach.ch — BFE, swisstopo, MeteoSwiss), from class 1 (low) to 5 (excellent). This explorer shows a random sample of 100,000 of those official points. Nothing here is made up, and it does not predict kWh — the official class is already based on irradiation.</p>
+      <h2>Two views</h2>
+      <p><strong>Each roof</strong> is the cadastre point itself. <strong>Hex 2.4 km</strong> groups nearby roofs so you can see a neighbourhood mix.</p>
+      <p><span class="em">Blue</span> is high suitability (class 4–5). <span class="dim">Orange</span> is low (class 1–2). You can jump to a city, turn the satellite on or off, and switch the interface between English, German, French and Italian.</p>
+      <p>This is a side project, not a product. Data: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
+    `,
     captionHex:
       'Tap a cell. <span class="em">Blue</span> is high suitability (class 4–5). <span class="dim">Orange</span> is low (class 1–2). Cells are 2.4 km clusters from Sonnendach.ch.',
     captionRoofs:
@@ -49,6 +61,18 @@ const I18N = {
   },
   de: {
     title: "GeoSolar AI — Schweizer Dachflächen",
+    navMap: "Karte",
+    navAbout: "Über",
+    aboutTitle: "Über GeoSolar AI",
+    aboutHtml: `
+      <h1>Über das Projekt</h1>
+      <p class="lead">Eine kleine Karte Schweizer Dächer und ihrer Eignung für Solarenergie.</p>
+      <p>Die Schweiz hat bereits rund 10 Millionen Dächer bewertet (Sonnendach.ch — BFE, swisstopo, MeteoSwiss), Klasse 1 (gering) bis 5 (hervorragend). Dieser Explorer zeigt eine Zufallsstichprobe von 100'000 dieser offiziellen Punkte. Nichts ist erfunden, und es gibt keine kWh-Prognose — die offizielle Klasse beruht schon auf der Einstrahlung.</p>
+      <h2>Zwei Ansichten</h2>
+      <p><strong>Jedes Dach</strong> ist der Katasterpunkt selbst. <strong>Hex 2,4 km</strong> fasst benachbarte Dächer zusammen, damit man den Mix im Quartier sieht.</p>
+      <p><span class="em">Blau</span> steht für hohe Eignung (Klasse 4–5). <span class="dim">Orange</span> für geringe (Klasse 1–2). Man kann zu einer Stadt springen, das Satellitenbild ein- oder ausschalten und die Oberfläche auf Deutsch, Französisch, Italienisch oder Englisch stellen.</p>
+      <p>Ein Nebenprojekt, kein Produkt. Daten: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
+    `,
     captionHex:
       'Zelle wählen. <span class="em">Blau</span> steht für hohe Eignung (Klasse 4–5). <span class="dim">Orange</span> für geringe (Klasse 1–2). Zellen: 2,4 km aus Sonnendach.ch.',
     captionRoofs:
@@ -97,6 +121,18 @@ const I18N = {
   },
   fr: {
     title: "GeoSolar AI — Toits solaires suisses",
+    navMap: "Carte",
+    navAbout: "À propos",
+    aboutTitle: "À propos de GeoSolar AI",
+    aboutHtml: `
+      <h1>À propos</h1>
+      <p class="lead">Une petite carte des toits suisses et de leur aptitude solaire.</p>
+      <p>La Suisse a déjà classé environ 10 millions de toits (Sonnendach.ch — OFEN, swisstopo, MétéoSuisse), de la classe 1 (faible) à 5 (excellent). Cet explorateur montre un échantillon aléatoire de 100&nbsp;000 de ces points officiels. Rien n’est inventé, et il n’y a pas de prévision en kWh — la classe officielle repose déjà sur l’irradiation.</p>
+      <h2>Deux vues</h2>
+      <p><strong>Chaque toit</strong> est le point du cadastre. <strong>Hex 2,4 km</strong> regroupe les toits voisins pour voir le mix d’un quartier.</p>
+      <p>Le <span class="em">bleu</span> signale une haute aptitude (classes 4–5). L’<span class="dim">orange</span> une faible (classes 1–2). On peut sauter à une ville, activer ou non le satellite, et passer l’interface en français, allemand, italien ou anglais.</p>
+      <p>Un projet parallèle, pas un produit. Données : <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code : <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
+    `,
     captionHex:
       'Choisissez une cellule. Le <span class="em">bleu</span> signale une haute aptitude (classes 4–5). L’<span class="dim">orange</span> une faible (classes 1–2). Cellules de 2,4 km, Sonnendach.ch.',
     captionRoofs:
@@ -145,6 +181,18 @@ const I18N = {
   },
   it: {
     title: "GeoSolar AI — Tetti solari svizzeri",
+    navMap: "Mappa",
+    navAbout: "Info",
+    aboutTitle: "Info su GeoSolar AI",
+    aboutHtml: `
+      <h1>Info</h1>
+      <p class="lead">Una piccola mappa dei tetti svizzeri e della loro idoneità al solare.</p>
+      <p>La Svizzera ha già classificato circa 10 milioni di tetti (Sonnendach.ch — UFE, swisstopo, MeteoSvizzera), dalla classe 1 (bassa) alla 5 (eccellente). Questo esploratore mostra un campione casuale di 100&nbsp;000 di questi punti ufficiali. Niente è inventato, e non c’è una previsione in kWh — la classe ufficiale si basa già sull’irraggiamento.</p>
+      <h2>Due viste</h2>
+      <p><strong>Ogni tetto</strong> è il punto del catasto. <strong>Hex 2,4 km</strong> raggruppa i tetti vicini per vedere il mix del quartiere.</p>
+      <p>Il <span class="em">blu</span> indica alta idoneità (classi 4–5). L’<span class="dim">arancio</span> indica bassa (classi 1–2). Si può saltare a una città, accendere o spegnere il satellite, e usare italiano, tedesco, francese o inglese.</p>
+      <p>Un progetto parallelo, non un prodotto. Dati: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Codice: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
+    `,
     captionHex:
       'Scegli una cella. Il <span class="em">blu</span> indica alta idoneità (classi 4–5). L’<span class="dim">arancio</span> indica bassa (classi 1–2). Celle da 2,4 km, Sonnendach.ch.',
     captionRoofs:

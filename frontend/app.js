@@ -39,7 +39,8 @@ const map = L.map("map", {
   zoomSnap: 0,
   zoomDelta: 1,
   wheelPxPerZoomLevel: 20,
-  zoomAnimation: false,
+  zoomAnimation: true,
+  zoomAnimationThreshold: 4,
   fadeAnimation: false,
   markerZoomAnimation: false,
   maxBounds: [
@@ -77,6 +78,20 @@ const placesLayer = L.tileLayer(
 );
 const BASE_LAYERS = [imageryLayer, roadsLayer, placesLayer];
 if (showBase) BASE_LAYERS.forEach((lyr) => lyr.addTo(map));
+
+// Fast wheel bursts skip CSS zoom (offset off-screen / delta too large) and
+// GridLayer then wipes tiles → black flash. Keep each tick animating and small.
+const _wheelZoom = map.scrollWheelZoom;
+const _performZoom = _wheelZoom._performZoom.bind(_wheelZoom);
+_wheelZoom._performZoom = function () {
+  const cap = map.options.wheelPxPerZoomLevel * 4;
+  this._delta = Math.max(-cap, Math.min(cap, this._delta));
+  _performZoom();
+};
+const _setZoomAround = map.setZoomAround.bind(map);
+map.setZoomAround = function (latlng, zoom, options) {
+  return _setZoomAround(latlng, zoom, L.extend({ animate: true }, options));
+};
 
 function lerpColor(a, b, t) {
   const pa = a.match(/\w\w/g).map((x) => parseInt(x, 16));
@@ -389,13 +404,12 @@ function hexBounds(hexes) {
   return bounds;
 }
 
+let zoomRaf = 0;
+
 function setupCanvas() {
-  map.createPane("roofs");
-  const pane = map.getPane("roofs");
-  pane.style.zIndex = 450;
-  pane.style.pointerEvents = "none";
-  roofCanvas = L.DomUtil.create("canvas", "roof-canvas", pane);
-  markCanvas = L.DomUtil.create("canvas", "roof-canvas", pane);
+  const host = map.getContainer();
+  roofCanvas = L.DomUtil.create("canvas", "roof-canvas", host);
+  markCanvas = L.DomUtil.create("canvas", "roof-canvas", host);
   roofCtx = roofCanvas.getContext("2d");
   markCtx = markCanvas.getContext("2d");
   roofCanvas.style.display = "none";
@@ -413,8 +427,44 @@ function setupCanvas() {
       drawRoofs(hitsNow);
     });
   };
-  map.on("move zoom", () => scheduleDraw(false));
-  map.on("moveend zoomend resize viewreset", () => scheduleDraw(true));
+  map.on("move", () => {
+    if (map._animatingZoom) return;
+    scheduleDraw(false);
+  });
+  map.on("zoomanim", (e) => {
+    if (view !== "roofs") return;
+    if (e.noUpdate) {
+      drawRoofsAt(e.center, e.zoom, false);
+      return;
+    }
+    const startZ = map.getZoom();
+    const startC = map.getCenter();
+    const endZ = e.zoom;
+    const endC = e.center;
+    const t0 = performance.now();
+    const dur = 250;
+    if (zoomRaf) cancelAnimationFrame(zoomRaf);
+    const tick = (now) => {
+      const t = Math.min(1, (now - t0) / dur);
+      const k = 1 - (1 - t) ** 1.685;
+      const z = startZ + (endZ - startZ) * k;
+      const c = L.latLng(
+        startC.lat + (endC.lat - startC.lat) * k,
+        startC.lng + (endC.lng - startC.lng) * k
+      );
+      drawRoofsAt(c, z, false);
+      if (t < 1) zoomRaf = requestAnimationFrame(tick);
+      else zoomRaf = 0;
+    };
+    zoomRaf = requestAnimationFrame(tick);
+  });
+  map.on("zoomend moveend resize viewreset", () => {
+    if (zoomRaf) {
+      cancelAnimationFrame(zoomRaf);
+      zoomRaf = 0;
+    }
+    scheduleDraw(true);
+  });
 }
 
 function syncCanvas(canvas, ctx) {
@@ -428,19 +478,31 @@ function syncCanvas(canvas, ctx) {
     canvas.style.width = `${size.x}px`;
     canvas.style.height = `${size.y}px`;
   }
-  L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, size.x, size.y);
   return size;
 }
 
-function pointRadius() {
-  const z = map.getZoom();
+function pointRadius(z = map.getZoom()) {
   if (z < 8) return 0.85;
   if (z < 10) return 1.35;
   if (z < 12) return 2.1;
   if (z < 14) return 3.2;
   return 4.8;
+}
+
+function projectAt(lat, lon, center, zoom, half) {
+  const p = map.project([lat, lon], zoom);
+  const c = map.project(center, zoom);
+  return { x: half.x + p.x - c.x, y: half.y + p.y - c.y };
+}
+
+function boundsAt(center, zoom) {
+  const size = map.getSize();
+  const c = map.project(center, zoom);
+  const sw = map.unproject([c.x - size.x / 2, c.y + size.y / 2], zoom);
+  const ne = map.unproject([c.x + size.x / 2, c.y - size.y / 2], zoom);
+  return L.latLngBounds(sw, ne).pad(0.04);
 }
 
 function rebuildHitGrid() {
@@ -485,18 +547,23 @@ function nearestRoof(containerPoint) {
 }
 
 function drawRoofs(rebuildHits = true) {
+  drawRoofsAt(map.getCenter(), map.getZoom(), rebuildHits);
+}
+
+function drawRoofsAt(center, zoom, rebuildHits = true) {
   if (view !== "roofs" || !roofCtx) return;
   syncCanvas(roofCanvas, roofCtx);
   syncCanvas(markCanvas, markCtx);
-  const r = pointRadius();
-  const bounds = map.getBounds().pad(0.04);
+  const r = pointRadius(zoom);
+  const bounds = boundsAt(center, zoom);
+  const half = map.getSize().divideBy(2);
   visRoofIds.forEach((i) => {
     const lat = ROOFS.lat[i];
     const lon = ROOFS.lon[i];
     if (lat < bounds.getSouth() || lat > bounds.getNorth() || lon < bounds.getWest() || lon > bounds.getEast()) {
       return;
     }
-    const p = map.latLngToContainerPoint([lat, lon]);
+    const p = projectAt(lat, lon, center, zoom, half);
     const k = ROOFS.k[i];
     roofCtx.fillStyle = colorForRoof(k);
     if (r <= 1.2) {
@@ -511,10 +578,14 @@ function drawRoofs(rebuildHits = true) {
     }
   });
   if (rebuildHits) rebuildHitGrid();
-  drawMarks();
+  drawMarksAt(center, zoom, half);
 }
 
 function drawMarks() {
+  drawMarksAt(map.getCenter(), map.getZoom(), map.getSize().divideBy(2));
+}
+
+function drawMarksAt(center, zoom, half) {
   if (!markCtx) return;
   const size = map.getSize();
   markCtx.clearRect(0, 0, size.x, size.y);
@@ -522,8 +593,8 @@ function drawMarks() {
   if (typeof hoverId === "number" && hoverId >= 0) ids.push({ i: hoverId, pin: false });
   if (pinned && typeof pinned.i === "number") ids.push({ i: pinned.i, pin: true });
   ids.forEach(({ i, pin }) => {
-    const p = map.latLngToContainerPoint([ROOFS.lat[i], ROOFS.lon[i]]);
-    const rad = Math.max(5, pointRadius() + 2);
+    const p = projectAt(ROOFS.lat[i], ROOFS.lon[i], center, zoom, half);
+    const rad = Math.max(5, pointRadius(zoom) + 2);
     markCtx.beginPath();
     markCtx.arc(p.x, p.y, rad + (pin ? 3 : 1.5), 0, TAU);
     markCtx.strokeStyle = pin ? "#f7e6c4" : "#e07a3d";
@@ -532,32 +603,42 @@ function drawMarks() {
   });
 }
 
-let hasFitted = false;
+function hideRoofCanvases() {
+  if (roofCanvas) {
+    roofCanvas.style.visibility = "hidden";
+    if (roofCtx) roofCtx.clearRect(0, 0, roofCanvas.width, roofCanvas.height);
+  }
+  if (markCanvas) {
+    markCanvas.style.visibility = "hidden";
+    if (markCtx) markCtx.clearRect(0, 0, markCanvas.width, markCanvas.height);
+  }
+}
+
+function showRoofCanvases() {
+  if (roofCanvas) roofCanvas.style.visibility = "";
+  if (markCanvas) markCanvas.style.visibility = "";
+}
 
 function fitView() {
+  hideRoofCanvases();
   map.invalidateSize();
-  const fly = hasFitted;
-  hasFitted = true;
+  map.stop();
+  // reset:true skips CSS-scaling satellite tiles across a large jump
+  // (the bright blob in the middle of the map).
+  const jump = { animate: false, reset: true };
   if (view === "roofs") {
     if (cityId === "ch") {
-      const opts = { padding: [28, 28], maxZoom: 7.6 };
-      if (fly) map.flyToBounds(CH_BOUNDS, { ...opts, duration: 0.7 });
-      else map.fitBounds(CH_BOUNDS, { ...opts, animate: false });
+      map.fitBounds(CH_BOUNDS, { padding: [28, 28], maxZoom: 7.6, ...jump });
     } else {
       const city = cityById(cityId);
-      if (fly) map.flyTo([city.lat, city.lon], 14.6, { duration: 0.7 });
-      else map.setView([city.lat, city.lon], 14.6, { animate: false });
+      map.setView([city.lat, city.lon], 14.6, jump);
     }
   } else if (cityId === "ch") {
-    const opts = { padding: [28, 28], maxZoom: 7.6 };
-    if (fly) map.flyToBounds(CH_BOUNDS, { ...opts, duration: 0.7 });
-    else map.fitBounds(CH_BOUNDS, { ...opts, animate: false });
+    map.fitBounds(CH_BOUNDS, { padding: [28, 28], maxZoom: 7.6, ...jump });
   } else {
     const vis = visibleHexes();
     if (!vis.length) return;
-    const opts = { padding: [52, 52], maxZoom: 11.6 };
-    if (fly) map.flyToBounds(hexBounds(vis), { ...opts, duration: 0.7 });
-    else map.fitBounds(hexBounds(vis), { ...opts, animate: false });
+    map.fitBounds(hexBounds(vis), { padding: [52, 52], maxZoom: 11.6, ...jump });
   }
 }
 
@@ -565,6 +646,8 @@ function applyLang() {
   const i = t();
   document.documentElement.lang = lang;
   document.title = i.title;
+  if ($("nav-map")) $("nav-map").textContent = i.navMap;
+  if ($("nav-about")) $("nav-about").textContent = i.navAbout;
   $("caption").innerHTML = view === "roofs" ? i.captionRoofs : i.captionHex;
   $("hint").textContent = view === "roofs" ? i.hintRoofs : i.hintHex;
   $("btn-hex").textContent = i.viewHex;
@@ -637,8 +720,10 @@ function setViewMode(next) {
     b.classList.toggle("on", b.dataset.view === next);
   });
   applyLang();
-  paint();
+  if (view === "roofs") recomputeRoofIds();
   fitView();
+  paint();
+  showRoofCanvases();
   showDefault();
 }
 
@@ -666,8 +751,10 @@ function goCity(id) {
   document.querySelectorAll("#city-row button").forEach((b) => {
     b.classList.toggle("on", b.dataset.city === id);
   });
-  paint();
+  if (view === "roofs") recomputeRoofIds();
   fitView();
+  paint();
+  showRoofCanvases();
   showDefault();
 }
 
@@ -776,11 +863,12 @@ async function init() {
   addCityLabels();
   setBase(showBase);
   paintFloorLabel();
-  paint();
-  showDefault();
   requestAnimationFrame(() => {
     map.invalidateSize();
     fitView();
+    paint();
+    showRoofCanvases();
+    showDefault();
   });
 }
 
