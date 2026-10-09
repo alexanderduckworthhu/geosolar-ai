@@ -665,7 +665,7 @@ function unpin() {
 
 async function init() {
   const [hexPayload, roofPayload] = await Promise.all([
-    fetch("data/hexes.json").then((r) => r.json()),
+    fetch("data/hexes.json?v=2").then((r) => r.json()),
     fetch("data/roofs.json").then((r) => r.json()),
   ]);
   DATA = hexPayload;
