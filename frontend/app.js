@@ -14,9 +14,11 @@ let cityId = "ch";
 let lastCityId = "zh";
 let floor = 1;
 let showBase = localStorage.getItem("geosolar-base") !== "off";
+let showBorders = localStorage.getItem("geosolar-borders") !== "off";
 let view = showBase ? "roofs" : "hex";
 let pinned = null;
 let layer = null;
+let borderLayer = null;
 let hoverId = null;
 let visRoofIds = [];
 let hitGrid = null;
@@ -61,6 +63,9 @@ map.getPane("roads").style.pointerEvents = "none";
 map.createPane("labels");
 map.getPane("labels").style.zIndex = 350;
 map.getPane("labels").style.pointerEvents = "none";
+map.createPane("borders");
+map.getPane("borders").style.zIndex = 420;
+map.getPane("borders").style.pointerEvents = "none";
 
 const TILE_OPTS = {
   maxZoom: 19,
@@ -807,6 +812,8 @@ function applyLang() {
   $("btn-roofs").textContent = i.viewRoofs;
   $("btn-base-on").textContent = i.mapOn;
   $("btn-base-off").textContent = i.mapOff;
+  if ($("btn-borders-on")) $("btn-borders-on").textContent = i.bordersOn;
+  if ($("btn-borders-off")) $("btn-borders-off").textContent = i.bordersOff;
   $("lbl-floor").textContent = i.classFloor;
   if ($("lbl-zoom")) $("lbl-zoom").textContent = i.zoom;
   if ($("btn-zoom-out")) $("btn-zoom-out").textContent = i.zoomOut;
@@ -860,6 +867,30 @@ function setBase(on) {
     return;
   }
   if (layer) layer.eachLayer((l) => l.setStyle(styleHex(l.feature.properties)));
+}
+
+function styleBorder(feature) {
+  const country = feature.properties && feature.properties.kind === "country";
+  return {
+    color: country ? "#f3eadc" : "#d7c9b4",
+    weight: country ? 1.8 : 1,
+    opacity: country ? 0.92 : 0.58,
+    fill: false,
+    interactive: false,
+  };
+}
+
+function setBorders(on) {
+  showBorders = Boolean(on);
+  localStorage.setItem("geosolar-borders", showBorders ? "on" : "off");
+  $("btn-borders-on").classList.toggle("on", showBorders);
+  $("btn-borders-off").classList.toggle("on", !showBorders);
+  if (!borderLayer) return;
+  if (showBorders) {
+    if (!map.hasLayer(borderLayer)) borderLayer.addTo(map);
+  } else if (map.hasLayer(borderLayer)) {
+    map.removeLayer(borderLayer);
+  }
 }
 
 function setLang(next) {
@@ -946,12 +977,18 @@ function unpin() {
 }
 
 async function init() {
-  const [hexPayload, roofPayload] = await Promise.all([
+  const [hexPayload, roofPayload, borderPayload] = await Promise.all([
     fetch("data/hexes.json?v=2").then((r) => r.json()),
     fetch("data/roofs.json").then((r) => r.json()),
+    fetch("data/borders.json").then((r) => r.json()),
   ]);
   DATA = hexPayload;
   ROOFS = unpackRoofs(roofPayload);
+  borderLayer = L.geoJSON(borderPayload, {
+    pane: "borders",
+    style: styleBorder,
+    interactive: false,
+  });
   setupCanvas();
   applyLang();
 
@@ -971,6 +1008,9 @@ async function init() {
   });
   document.querySelectorAll("#base-row button").forEach((b) => {
     b.addEventListener("click", () => setBase(b.dataset.base === "on"));
+  });
+  document.querySelectorAll("#border-row button").forEach((b) => {
+    b.addEventListener("click", () => setBorders(b.dataset.borders === "on"));
   });
   document.querySelectorAll("#langs button").forEach((b) => {
     b.addEventListener("click", () => setLang(b.dataset.lang));
@@ -1027,6 +1067,7 @@ async function init() {
   });
   addCityLabels();
   setBase(showBase);
+  setBorders(showBorders);
   paintFloorLabel();
   requestAnimationFrame(() => {
     map.invalidateSize();
@@ -1045,6 +1086,7 @@ window.GeoSolar = {
   setLang,
   map,
   setBase,
+  setBorders,
   zoomToPct,
   zoomOutFull,
   zoomInCity,
