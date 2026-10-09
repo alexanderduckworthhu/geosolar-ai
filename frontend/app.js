@@ -39,6 +39,9 @@ const map = L.map("map", {
   maxBoundsViscosity: 0.7,
 }).setView([46.8, 8.23], 7);
 
+map.createPane("roads");
+map.getPane("roads").style.zIndex = 340;
+map.getPane("roads").style.pointerEvents = "none";
 map.createPane("labels");
 map.getPane("labels").style.zIndex = 350;
 map.getPane("labels").style.pointerEvents = "none";
@@ -53,7 +56,7 @@ const imageryLayer = L.tileLayer(
 const roadsLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
   {
-    pane: "labels",
+    pane: "roads",
     maxZoom: 19,
   }
 );
@@ -571,8 +574,10 @@ function setBase(on) {
     }
   });
   const tilePane = map.getPane("tilePane");
+  const roadsPane = map.getPane("roads");
   const labelPane = map.getPane("labels");
   if (tilePane) tilePane.style.display = showBase ? "" : "none";
+  if (roadsPane) roadsPane.style.display = showBase ? "" : "none";
   if (labelPane) labelPane.style.display = showBase ? "" : "none";
   if (turningOn) {
     setViewMode("roofs");
