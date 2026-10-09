@@ -168,6 +168,19 @@ body {
   filter: brightness(0.78) saturate(0.88) contrast(1.06);
 }
 
+.tile-freeze {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  pointer-events: none;
+  filter: brightness(0.78) saturate(0.88) contrast(1.06);
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
 .leaflet-fade-anim .leaflet-tile {
   transition: none;
 }
@@ -179,7 +192,8 @@ body {
 
 #map.no-base .leaflet-tile-pane,
 #map.no-base .leaflet-roads-pane,
-#map.no-base .leaflet-labels-pane {
+#map.no-base .leaflet-labels-pane,
+#map.no-base .tile-freeze {
   display: none !important;
 }
 
@@ -199,6 +213,10 @@ body {
   white-space: nowrap;
   pointer-events: none;
   text-shadow: 0 1px 4px #08110e, 0 0 8px #08110e;
+}
+
+#map.roof-view .city-label {
+  display: none !important;
 }
 
 .hint {

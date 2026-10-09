@@ -43,8 +43,9 @@ const map = L.map("map", {
   zoomSnap: 0,
   zoomDelta: 1,
   wheelPxPerZoomLevel: 12,
+  wheelDebounceTime: 90,
   zoomAnimation: true,
-  zoomAnimationThreshold: 4,
+  zoomAnimationThreshold: 18,
   fadeAnimation: false,
   markerZoomAnimation: false,
   maxBounds: [
@@ -66,7 +67,7 @@ const TILE_OPTS = {
   maxNativeZoom: 19,
   updateWhenIdle: false,
   updateWhenZooming: true,
-  keepBuffer: 6,
+  keepBuffer: 12,
 };
 const imageryLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -76,18 +77,85 @@ const roadsLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
   { pane: "roads", ...TILE_OPTS }
 );
-const placesLayer = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-  { pane: "labels", ...TILE_OPTS }
-);
-const BASE_LAYERS = [imageryLayer, roadsLayer, placesLayer];
+const BASE_LAYERS = [imageryLayer, roadsLayer];
 if (showBase) BASE_LAYERS.forEach((lyr) => lyr.addTo(map));
+map.getPane("mapPane").style.zIndex = 2;
 
-// Fast wheel bursts skip CSS zoom (offset off-screen / delta too large) and
-// GridLayer then wipes tiles → black flash. Keep each tick animating and small.
+function freezeCanvas() {
+  const host = map.getContainer();
+  let el = host.querySelector(".tile-freeze");
+  if (!el) {
+    el = L.DomUtil.create("canvas", "tile-freeze");
+    host.insertBefore(el, host.firstChild);
+  }
+  return el;
+}
+
+let snapTimer = 0;
+function snapshotTiles() {
+  if (!showBase || map._animatingZoom) return;
+  if (imageryLayer._loading) return;
+  const pane = map.getPane("tilePane");
+  if (!pane) return;
+  const imgs = [...pane.querySelectorAll("img.leaflet-tile-loaded")].filter(
+    (img) => img.complete && img.naturalWidth
+  );
+  if (imgs.length < 2) return;
+  const canvas = freezeCanvas();
+  const size = map.getSize();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(size.x * dpr);
+  canvas.height = Math.round(size.y * dpr);
+  canvas.style.width = `${size.x}px`;
+  canvas.style.height = `${size.y}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size.x, size.y);
+  const origin = map.getContainer().getBoundingClientRect();
+  imgs.forEach((img) => {
+    const r = img.getBoundingClientRect();
+    ctx.drawImage(img, r.left - origin.left, r.top - origin.top, r.width, r.height);
+  });
+}
+
+function scheduleSnapshot() {
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(snapshotTiles, 220);
+}
+
+function patchKeepTiles(layer) {
+  const prune = layer._pruneTiles.bind(layer);
+  layer._pruneTiles = function () {
+    if (!this._map || this._map._animatingZoom) return;
+    let current = 0;
+    let loaded = 0;
+    for (const key in this._tiles) {
+      const tile = this._tiles[key];
+      if (!tile.current) continue;
+      current += 1;
+      if (tile.loaded) loaded += 1;
+    }
+    if (current > 2 && loaded < current * 0.45) {
+      this.once("load", () => prune());
+      return;
+    }
+    prune();
+  };
+}
+BASE_LAYERS.forEach(patchKeepTiles);
+map.on("zoomend moveend", scheduleSnapshot);
+imageryLayer.on("load", scheduleSnapshot);
+
+// Fast wheel bursts skip CSS zoom and GridLayer wipes tiles. Animate always,
+// ignore extra wheel while a zoom is already running, and cap each tick.
 const _wheelZoom = map.scrollWheelZoom;
 const _performZoom = _wheelZoom._performZoom.bind(_wheelZoom);
 _wheelZoom._performZoom = function () {
+  if (map._animatingZoom) {
+    this._delta = 0;
+    this._startTime = null;
+    return;
+  }
   const cap = map.options.wheelPxPerZoomLevel * 6;
   this._delta = Math.max(-cap, Math.min(cap, this._delta));
   _performZoom();
@@ -816,6 +884,7 @@ function setViewMode(next) {
 }
 
 function paint() {
+  $("map").classList.toggle("roof-view", view === "roofs");
   if (view === "roofs") {
     if (layer) {
       map.removeLayer(layer);
