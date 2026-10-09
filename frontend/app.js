@@ -31,7 +31,11 @@ const map = L.map("map", {
   attributionControl: false,
   minZoom: 6,
   maxZoom: 18,
-  zoomSnap: 0.25,
+  zoomSnap: 0,
+  zoomDelta: 0.4,
+  wheelPxPerZoomLevel: 140,
+  wheelDebounceTime: 10,
+  zoomAnimationThreshold: 16,
   maxBounds: [
     [45.2, 5.2],
     [48.4, 11.3],
@@ -498,8 +502,14 @@ function drawMarks() {
   });
 }
 
+let hasFitted = false;
+
 function fitView() {
   map.invalidateSize();
+  const anim = hasFitted
+    ? { animate: true, duration: 0.75, easeLinearity: 0.2 }
+    : { animate: false };
+  hasFitted = true;
   if (view === "roofs") {
     if (cityId === "ch") {
       if (!visRoofIds.length) return;
@@ -507,11 +517,11 @@ function fitView() {
       map.fitBounds(bounds, {
         padding: [28, 28],
         maxZoom: 7.6,
-        animate: false,
+        ...anim,
       });
     } else {
       const city = cityById(cityId);
-      map.setView([city.lat, city.lon], 14.6, { animate: false });
+      map.setView([city.lat, city.lon], 14.6, anim);
     }
   } else {
     const vis = visibleHexes();
@@ -519,7 +529,7 @@ function fitView() {
     map.fitBounds(hexBounds(vis), {
       padding: cityId === "ch" ? [28, 28] : [52, 52],
       maxZoom: cityId === "ch" ? 7.6 : 11.6,
-      animate: false,
+      ...anim,
     });
   }
 }
