@@ -11,6 +11,7 @@ let DATA = null;
 let ROOFS = null;
 let mode = "mean";
 let cityId = "ch";
+let lastCityId = "zh";
 let floor = 1;
 let showBase = localStorage.getItem("geosolar-base") !== "off";
 let view = showBase ? "roofs" : "hex";
@@ -30,6 +31,9 @@ const CH_BOUNDS = [
   [45.82, 5.96],
   [47.81, 10.49],
 ];
+const ZOOM_OUT = 7.6;
+const ZOOM_CITY_ROOFS = 14.6;
+const ZOOM_CITY_HEX = 11.6;
 
 const map = L.map("map", {
   zoomControl: false,
@@ -38,7 +42,7 @@ const map = L.map("map", {
   maxZoom: 18,
   zoomSnap: 0,
   zoomDelta: 1,
-  wheelPxPerZoomLevel: 20,
+  wheelPxPerZoomLevel: 12,
   zoomAnimation: true,
   zoomAnimationThreshold: 4,
   fadeAnimation: false,
@@ -84,7 +88,7 @@ if (showBase) BASE_LAYERS.forEach((lyr) => lyr.addTo(map));
 const _wheelZoom = map.scrollWheelZoom;
 const _performZoom = _wheelZoom._performZoom.bind(_wheelZoom);
 _wheelZoom._performZoom = function () {
-  const cap = map.options.wheelPxPerZoomLevel * 4;
+  const cap = map.options.wheelPxPerZoomLevel * 6;
   this._delta = Math.max(-cap, Math.min(cap, this._delta));
   _performZoom();
 };
@@ -601,6 +605,26 @@ function drawMarksAt(center, zoom, half) {
     markCtx.lineWidth = pin ? 2 : 1.4;
     markCtx.stroke();
   });
+  drawCityNames(markCtx, center, zoom, half, size);
+}
+
+function drawCityNames(ctx, center, zoom, half, size) {
+  if (!DATA || !DATA.cities) return;
+  ctx.save();
+  ctx.font = "500 11px Fraunces, serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#f3eadc";
+  ctx.shadowColor = "#08110e";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 1;
+  DATA.cities.forEach((c) => {
+    if (c.id === "ch") return;
+    const p = projectAt(c.lat, c.lon, center, zoom, half);
+    if (p.x < -48 || p.y < -16 || p.x > size.x + 48 || p.y > size.y + 16) return;
+    ctx.fillText(c.name, p.x, p.y);
+  });
+  ctx.restore();
 }
 
 function hideRoofCanvases() {
@@ -628,18 +652,79 @@ function fitView() {
   const jump = { animate: false, reset: true };
   if (view === "roofs") {
     if (cityId === "ch") {
-      map.fitBounds(CH_BOUNDS, { padding: [28, 28], maxZoom: 7.6, ...jump });
+      map.fitBounds(CH_BOUNDS, { padding: [28, 28], maxZoom: ZOOM_OUT, ...jump });
     } else {
       const city = cityById(cityId);
-      map.setView([city.lat, city.lon], 14.6, jump);
+      map.setView([city.lat, city.lon], ZOOM_CITY_ROOFS, jump);
     }
   } else if (cityId === "ch") {
-    map.fitBounds(CH_BOUNDS, { padding: [28, 28], maxZoom: 7.6, ...jump });
+    map.fitBounds(CH_BOUNDS, { padding: [28, 28], maxZoom: ZOOM_OUT, ...jump });
   } else {
     const vis = visibleHexes();
     if (!vis.length) return;
-    map.fitBounds(hexBounds(vis), { padding: [52, 52], maxZoom: 11.6, ...jump });
+    map.fitBounds(hexBounds(vis), { padding: [52, 52], maxZoom: ZOOM_CITY_HEX, ...jump });
   }
+  syncZoomUi();
+}
+
+function zoomInLevel() {
+  return view === "roofs" ? ZOOM_CITY_ROOFS : ZOOM_CITY_HEX;
+}
+
+function zoomPctFromMap() {
+  const z0 = ZOOM_OUT;
+  const z1 = zoomInLevel();
+  const pct = ((map.getZoom() - z0) / (z1 - z0)) * 100;
+  return Math.round(Math.max(0, Math.min(100, pct)));
+}
+
+function syncZoomUi() {
+  const pct = zoomPctFromMap();
+  const range = $("zoom-range");
+  const label = $("zoom-pct");
+  if (label) label.textContent = `${pct}%`;
+  if (range && document.activeElement !== range) range.value = String(pct);
+}
+
+function zoomToPct(pct) {
+  const t = Math.max(0, Math.min(100, Number(pct))) / 100;
+  const z = ZOOM_OUT + (zoomInLevel() - ZOOM_OUT) * t;
+  map.stop();
+  if (t <= 0.001) {
+    map.fitBounds(CH_BOUNDS, {
+      padding: [28, 28],
+      maxZoom: ZOOM_OUT,
+      animate: false,
+      reset: true,
+    });
+  } else if (cityId !== "ch") {
+    const city = cityById(cityId);
+    const ch = L.latLngBounds(CH_BOUNDS).getCenter();
+    const center = L.latLng(
+      ch.lat + (city.lat - ch.lat) * t,
+      ch.lng + (city.lon - ch.lng) * t
+    );
+    map.setView(center, z, { animate: false, reset: t >= 0.999 });
+  } else {
+    map.setView(map.getCenter(), z, { animate: false, reset: t >= 0.999 });
+  }
+  if (view === "roofs") {
+    showRoofCanvases();
+    drawRoofs();
+  }
+  syncZoomUi();
+}
+
+function zoomOutFull() {
+  goCity("ch");
+}
+
+function zoomInCity() {
+  if (cityId === "ch") {
+    goCity(lastCityId || "zh");
+    return;
+  }
+  zoomToPct(100);
 }
 
 function applyLang() {
@@ -655,6 +740,9 @@ function applyLang() {
   $("btn-base-on").textContent = i.mapOn;
   $("btn-base-off").textContent = i.mapOff;
   $("lbl-floor").textContent = i.classFloor;
+  if ($("lbl-zoom")) $("lbl-zoom").textContent = i.zoom;
+  if ($("btn-zoom-out")) $("btn-zoom-out").textContent = i.zoomOut;
+  if ($("btn-zoom-in")) $("btn-zoom-in").textContent = i.zoomIn;
   $("btn-mean").textContent = i.meanClass;
   $("btn-pct4").textContent = i.pct45;
   $("lbl-mean-metric").textContent = i.meanMetric;
@@ -746,6 +834,7 @@ function paint() {
 
 function goCity(id) {
   cityId = id;
+  if (id !== "ch") lastCityId = id;
   pinned = null;
   hoverId = null;
   document.querySelectorAll("#city-row button").forEach((b) => {
@@ -829,6 +918,12 @@ async function init() {
     paintFloorLabel();
     paint();
   });
+  $("zoom-range").addEventListener("input", (e) => {
+    zoomToPct(e.target.value);
+  });
+  $("btn-zoom-out").addEventListener("click", zoomOutFull);
+  $("btn-zoom-in").addEventListener("click", zoomInCity);
+  map.on("zoomend", syncZoomUi);
   map.on("click", (e) => {
     if (view === "roofs") {
       const i = nearestRoof(e.containerPoint);
@@ -858,7 +953,8 @@ async function init() {
   });
   window.addEventListener("resize", () => {
     map.invalidateSize();
-    fitView();
+    if (view === "roofs") drawRoofs();
+    syncZoomUi();
   });
   addCityLabels();
   setBase(showBase);
@@ -880,6 +976,9 @@ window.GeoSolar = {
   setLang,
   map,
   setBase,
+  zoomToPct,
+  zoomOutFull,
+  zoomInCity,
   setFloor: (n) => {
     floor = Number(n);
     $("class-floor").value = String(n);

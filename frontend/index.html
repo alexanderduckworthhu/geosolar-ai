@@ -20,7 +20,7 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=12" />
+    <link rel="stylesheet" href="styles.css?v=13" />
   </head>
   <body>
     <header class="top">
@@ -63,6 +63,16 @@
         </div>
 
         <div class="city-row" id="city-row"></div>
+
+        <div class="slider-block zoom-block">
+          <span id="lbl-zoom"></span>
+          <strong id="zoom-pct">0%</strong>
+          <div class="zoom-controls">
+            <button type="button" id="btn-zoom-out"></button>
+            <input id="zoom-range" type="range" min="0" max="100" step="1" value="0" aria-labelledby="lbl-zoom" />
+            <button type="button" id="btn-zoom-in"></button>
+          </div>
+        </div>
 
         <label class="slider-block">
           <span id="lbl-floor"></span>
@@ -117,7 +127,7 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script src="i18n.js?v=7"></script>
-    <script src="app.js?v=16"></script>
+    <script src="i18n.js?v=8"></script>
+    <script src="app.js?v=18"></script>
   </body>
 </html>

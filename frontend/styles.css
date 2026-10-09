@@ -313,6 +313,39 @@ body {
   accent-color: var(--class-5);
 }
 
+.zoom-controls {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.zoom-controls input {
+  grid-column: auto;
+  width: 100%;
+  accent-color: var(--class-5);
+}
+
+.zoom-controls button {
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 9px;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.zoom-controls button:hover {
+  color: var(--ink);
+  border-color: var(--copper);
+}
+
 .place-kicker {
   margin: 0;
   font-size: 0.68rem;
