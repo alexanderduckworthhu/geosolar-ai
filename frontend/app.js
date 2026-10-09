@@ -32,9 +32,8 @@ const map = L.map("map", {
   minZoom: 6,
   maxZoom: 18,
   zoomSnap: 0,
-  zoomDelta: 0.4,
-  wheelPxPerZoomLevel: 140,
-  wheelDebounceTime: 10,
+  zoomDelta: 1,
+  wheelPxPerZoomLevel: 40,
   zoomAnimationThreshold: 16,
   maxBounds: [
     [45.2, 5.2],
