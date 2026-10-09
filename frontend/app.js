@@ -26,6 +26,11 @@ let roofCtx = null;
 let markCanvas = null;
 let markCtx = null;
 
+const CH_BOUNDS = [
+  [45.82, 5.96],
+  [47.81, 10.49],
+];
+
 const map = L.map("map", {
   zoomControl: false,
   attributionControl: false,
@@ -33,8 +38,10 @@ const map = L.map("map", {
   maxZoom: 18,
   zoomSnap: 0,
   zoomDelta: 1,
-  wheelPxPerZoomLevel: 40,
-  zoomAnimationThreshold: 16,
+  wheelPxPerZoomLevel: 20,
+  zoomAnimation: false,
+  fadeAnimation: false,
+  markerZoomAnimation: false,
   maxBounds: [
     [45.2, 5.2],
     [48.4, 11.3],
@@ -49,28 +56,27 @@ map.createPane("labels");
 map.getPane("labels").style.zIndex = 350;
 map.getPane("labels").style.pointerEvents = "none";
 
+const TILE_OPTS = {
+  maxZoom: 19,
+  maxNativeZoom: 19,
+  updateWhenIdle: false,
+  updateWhenZooming: true,
+  keepBuffer: 6,
+};
 const imageryLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  {
-    maxZoom: 19,
-    maxNativeZoom: 19,
-  }
+  TILE_OPTS
 );
 const roadsLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
-  {
-    pane: "roads",
-    maxZoom: 19,
-  }
+  { pane: "roads", ...TILE_OPTS }
 );
 const placesLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-  {
-    pane: "labels",
-    maxZoom: 19,
-  }
+  { pane: "labels", ...TILE_OPTS }
 );
 const BASE_LAYERS = [imageryLayer, roadsLayer, placesLayer];
+if (showBase) BASE_LAYERS.forEach((lyr) => lyr.addTo(map));
 
 function lerpColor(a, b, t) {
   const pa = a.match(/\w\w/g).map((x) => parseInt(x, 16));
@@ -137,8 +143,18 @@ function visibleHexes() {
   return DATA.hexes.filter((h) => hexInCity(h, city));
 }
 
+let allRoofIds = null;
+
 function recomputeRoofIds() {
   const city = cityById(cityId);
+  if (city.id === "ch") {
+    if (!allRoofIds) {
+      allRoofIds = new Array(ROOFS.n);
+      for (let i = 0; i < ROOFS.n; i++) allRoofIds[i] = i;
+    }
+    visRoofIds = allRoofIds;
+    return;
+  }
   const ids = [];
   for (let i = 0; i < ROOFS.n; i++) {
     if (inCity(ROOFS.lat[i], ROOFS.lon[i], city)) ids.push(i);
@@ -374,16 +390,31 @@ function hexBounds(hexes) {
 }
 
 function setupCanvas() {
-  const pane = map.getPanes().overlayPane;
+  map.createPane("roofs");
+  const pane = map.getPane("roofs");
+  pane.style.zIndex = 450;
+  pane.style.pointerEvents = "none";
   roofCanvas = L.DomUtil.create("canvas", "roof-canvas", pane);
   markCanvas = L.DomUtil.create("canvas", "roof-canvas", pane);
   roofCtx = roofCanvas.getContext("2d");
   markCtx = markCanvas.getContext("2d");
   roofCanvas.style.display = "none";
   markCanvas.style.display = "none";
-  map.on("moveend zoomend resize viewreset", () => {
-    if (view === "roofs") drawRoofs();
-  });
+  let drawRaf = 0;
+  let drawHits = false;
+  const scheduleDraw = (hits) => {
+    if (view !== "roofs") return;
+    if (hits) drawHits = true;
+    if (drawRaf) return;
+    drawRaf = requestAnimationFrame(() => {
+      drawRaf = 0;
+      const hitsNow = drawHits;
+      drawHits = false;
+      drawRoofs(hitsNow);
+    });
+  };
+  map.on("move zoom", () => scheduleDraw(false));
+  map.on("moveend zoomend resize viewreset", () => scheduleDraw(true));
 }
 
 function syncCanvas(canvas, ctx) {
@@ -453,9 +484,9 @@ function nearestRoof(containerPoint) {
   return best;
 }
 
-function drawRoofs() {
+function drawRoofs(rebuildHits = true) {
   if (view !== "roofs" || !roofCtx) return;
-  const size = syncCanvas(roofCanvas, roofCtx);
+  syncCanvas(roofCanvas, roofCtx);
   syncCanvas(markCanvas, markCtx);
   const r = pointRadius();
   const bounds = map.getBounds().pad(0.04);
@@ -479,7 +510,7 @@ function drawRoofs() {
       roofCtx.stroke();
     }
   });
-  rebuildHitGrid();
+  if (rebuildHits) rebuildHitGrid();
   drawMarks();
 }
 
@@ -505,31 +536,28 @@ let hasFitted = false;
 
 function fitView() {
   map.invalidateSize();
-  const anim = hasFitted
-    ? { animate: true, duration: 0.75, easeLinearity: 0.2 }
-    : { animate: false };
+  const fly = hasFitted;
   hasFitted = true;
   if (view === "roofs") {
     if (cityId === "ch") {
-      if (!visRoofIds.length) return;
-      const bounds = L.latLngBounds(visRoofIds.map((i) => [ROOFS.lat[i], ROOFS.lon[i]]));
-      map.fitBounds(bounds, {
-        padding: [28, 28],
-        maxZoom: 7.6,
-        ...anim,
-      });
+      const opts = { padding: [28, 28], maxZoom: 7.6 };
+      if (fly) map.flyToBounds(CH_BOUNDS, { ...opts, duration: 0.7 });
+      else map.fitBounds(CH_BOUNDS, { ...opts, animate: false });
     } else {
       const city = cityById(cityId);
-      map.setView([city.lat, city.lon], 14.6, anim);
+      if (fly) map.flyTo([city.lat, city.lon], 14.6, { duration: 0.7 });
+      else map.setView([city.lat, city.lon], 14.6, { animate: false });
     }
+  } else if (cityId === "ch") {
+    const opts = { padding: [28, 28], maxZoom: 7.6 };
+    if (fly) map.flyToBounds(CH_BOUNDS, { ...opts, duration: 0.7 });
+    else map.fitBounds(CH_BOUNDS, { ...opts, animate: false });
   } else {
     const vis = visibleHexes();
     if (!vis.length) return;
-    map.fitBounds(hexBounds(vis), {
-      padding: cityId === "ch" ? [28, 28] : [52, 52],
-      maxZoom: cityId === "ch" ? 7.6 : 11.6,
-      ...anim,
-    });
+    const opts = { padding: [52, 52], maxZoom: 11.6 };
+    if (fly) map.flyToBounds(hexBounds(vis), { ...opts, duration: 0.7 });
+    else map.fitBounds(hexBounds(vis), { ...opts, animate: false });
   }
 }
 

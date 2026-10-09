@@ -139,6 +139,10 @@ body {
   filter: brightness(0.78) saturate(0.88) contrast(1.06);
 }
 
+.leaflet-fade-anim .leaflet-tile {
+  transition: none;
+}
+
 .leaflet-roads-pane {
   filter: grayscale(1) invert(1) brightness(0.72) contrast(1.35);
   mix-blend-mode: multiply;
