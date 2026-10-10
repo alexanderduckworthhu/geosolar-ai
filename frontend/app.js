@@ -28,6 +28,11 @@ let roofCanvas = null;
 let roofCtx = null;
 let markCanvas = null;
 let markCtx = null;
+let searchMarker = null;
+let searchHits = [];
+let searchTimer = 0;
+let searchActive = -1;
+let sheetOpen = false;
 
 const CH_BOUNDS = [
   [45.82, 5.96],
@@ -349,6 +354,7 @@ function fmt1(x, digits) {
 function renderStats(stats, title, kicker, sub, insight) {
   $("place-kicker").textContent = kicker;
   $("place-name").textContent = title;
+  if ($("sheet-peek")) $("sheet-peek").textContent = title;
   $("place-sub").textContent = sub;
   const one = view === "roofs" && stats.n === 1;
   $("m-mean").textContent = fmt1(stats.mean_klasse, one ? 0 : 1);
@@ -807,7 +813,14 @@ function applyLang() {
   if ($("nav-map")) $("nav-map").textContent = i.navMap;
   if ($("nav-about")) $("nav-about").textContent = i.navAbout;
   $("caption").innerHTML = view === "roofs" ? i.captionRoofs : i.captionHex;
-  $("hint").textContent = view === "roofs" ? i.hintRoofs : i.hintHex;
+  const touch = window.matchMedia("(pointer: coarse)").matches;
+  $("hint").textContent = view === "roofs"
+    ? touch ? i.hintRoofsTouch : i.hintRoofs
+    : touch ? i.hintHexTouch : i.hintHex;
+  if ($("lbl-search")) $("lbl-search").textContent = i.searchLabel;
+  if ($("search-input")) $("search-input").placeholder = i.searchPlaceholder;
+  if ($("search-clear")) $("search-clear").setAttribute("aria-label", i.searchClear);
+  syncSheetLabel();
   $("btn-hex").textContent = i.viewHex;
   $("btn-roofs").textContent = i.viewRoofs;
   $("btn-base-on").textContent = i.mapOn;
@@ -937,6 +950,7 @@ function goCity(id) {
   if (id !== "ch") lastCityId = id;
   pinned = null;
   hoverId = null;
+  clearSearchMarker();
   document.querySelectorAll("#city-row button").forEach((b) => {
     b.classList.toggle("on", b.dataset.city === id);
   });
@@ -961,6 +975,308 @@ function addCityLabels() {
         }),
       }).addTo(map);
     });
+}
+
+function isCoarse() {
+  return window.matchMedia("(pointer: coarse)").matches;
+}
+
+function syncSheetLabel() {
+  const btn = $("sheet-toggle");
+  if (!btn) return;
+  btn.setAttribute("aria-expanded", sheetOpen ? "true" : "false");
+}
+
+function setSheet(open) {
+  sheetOpen = Boolean(open);
+  document.body.classList.toggle("sheet-open", sheetOpen);
+  syncSheetLabel();
+  requestAnimationFrame(() => {
+    map.invalidateSize();
+    if (view === "roofs") drawRoofs();
+  });
+}
+
+function stripHtml(s) {
+  return String(s || "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .trim();
+}
+
+function lv95ToWgs(e, n) {
+  const y = (e - 2600000) / 1e6;
+  const x = (n - 1200000) / 1e6;
+  return {
+    lon:
+      (2.6779094 + 4.728982 * y + 0.791484 * y * x + 0.1306 * y * x * x - 0.0436 * y * y * y) *
+      (100 / 36),
+    lat:
+      (16.9023892 +
+        3.238272 * x -
+        0.270978 * y * y -
+        0.002528 * x * x -
+        0.0447 * y * y * x -
+        0.014 * x * x * x) *
+      (100 / 36),
+  };
+}
+
+function inSwitzerland(lat, lon) {
+  return lat >= 45.7 && lat <= 47.92 && lon >= 5.8 && lon <= 10.7;
+}
+
+function parseCoords(text) {
+  const nums = String(text)
+    .replace(/['’\u00a0]/g, "")
+    .match(/-?\d+(?:[.,]\d+)?/g);
+  if (!nums || nums.length < 2) return null;
+  const a = Number(nums[0].replace(",", "."));
+  const b = Number(nums[1].replace(",", "."));
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  if (a > 2400000 && a < 2900000 && b > 1050000 && b < 1350000) {
+    const wgs = lv95ToWgs(a, b);
+    if (inSwitzerland(wgs.lat, wgs.lon)) {
+      return { lat: wgs.lat, lon: wgs.lon, kind: "lv95", e: a, n: b };
+    }
+  }
+  if (b > 2400000 && b < 2900000 && a > 1050000 && a < 1350000) {
+    const wgs = lv95ToWgs(b, a);
+    if (inSwitzerland(wgs.lat, wgs.lon)) {
+      return { lat: wgs.lat, lon: wgs.lon, kind: "lv95", e: b, n: a };
+    }
+  }
+  if (inSwitzerland(a, b)) return { lat: a, lon: b, kind: "wgs" };
+  if (inSwitzerland(b, a)) return { lat: b, lon: a, kind: "wgs" };
+  return null;
+}
+
+function coordHit(parsed) {
+  const i = t();
+  if (parsed.kind === "lv95") {
+    return {
+      label: `${fmt(Math.round(parsed.e))} / ${fmt(Math.round(parsed.n))}`,
+      detail: i.searchLv95,
+      lat: parsed.lat,
+      lon: parsed.lon,
+      zoom: 15.2,
+      origin: "coords",
+    };
+  }
+  return {
+    label: `${parsed.lat.toFixed(5)}, ${parsed.lon.toFixed(5)}`,
+    detail: i.searchWgs,
+    lat: parsed.lat,
+    lon: parsed.lon,
+    zoom: 15.2,
+    origin: "coords",
+  };
+}
+
+function originZoom(origin) {
+  if (origin === "address") return 16.2;
+  if (origin === "zipcode") return 13.6;
+  return 12.6;
+}
+
+function originDetail(origin) {
+  if (origin === "address") return t().searchAddress;
+  if (origin === "zipcode") return t().searchPlz;
+  return t().city;
+}
+
+async function fetchPlaces(query) {
+  const url = new URL("https://api3.geo.admin.ch/rest/services/api/SearchServer");
+  url.searchParams.set("searchText", query);
+  url.searchParams.set("type", "locations");
+  url.searchParams.set("origins", "address,zipcode,gg25");
+  url.searchParams.set("sr", "4326");
+  url.searchParams.set("limit", "7");
+  url.searchParams.set("lang", lang);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("search failed");
+  const data = await res.json();
+  return (data.results || [])
+    .map((row) => {
+      const a = row.attrs || {};
+      const lat = Number(a.lat);
+      const lon = Number(a.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || !inSwitzerland(lat, lon)) return null;
+      return {
+        label: stripHtml(a.label) || stripHtml(a.detail),
+        detail: originDetail(a.origin),
+        lat,
+        lon,
+        zoom: originZoom(a.origin),
+        origin: a.origin || "gg25",
+      };
+    })
+    .filter(Boolean);
+}
+
+function renderSearchHits(hits) {
+  const box = $("search-results");
+  box.innerHTML = "";
+  searchHits = hits;
+  searchActive = hits.length ? 0 : -1;
+  if (!hits.length) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = t().searchEmpty;
+    box.appendChild(li);
+    box.hidden = false;
+    return;
+  }
+  hits.forEach((hit, idx) => {
+    const li = document.createElement("li");
+    li.role = "option";
+    li.className = idx === 0 ? "on" : "";
+    li.innerHTML = `${hit.label}<small>${hit.detail}</small>`;
+    li.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      goSearch(hit);
+    });
+    box.appendChild(li);
+  });
+  box.hidden = false;
+}
+
+function hideSearchResults() {
+  const box = $("search-results");
+  if (box) {
+    box.hidden = true;
+    box.innerHTML = "";
+  }
+  searchHits = [];
+  searchActive = -1;
+}
+
+function highlightSearch(idx) {
+  const items = [...$("search-results").querySelectorAll("li")].filter((li) => !li.classList.contains("empty"));
+  if (!items.length) return;
+  searchActive = (idx + items.length) % items.length;
+  items.forEach((li, i) => li.classList.toggle("on", i === searchActive));
+  items[searchActive].scrollIntoView({ block: "nearest" });
+}
+
+function placeSearchMarker(lat, lon) {
+  clearSearchMarker();
+  searchMarker = L.marker([lat, lon], {
+    icon: L.divIcon({
+      className: "search-pin",
+      html: "<i></i>",
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    }),
+    keyboard: false,
+    zIndexOffset: 800,
+  }).addTo(map);
+}
+
+function clearSearchMarker() {
+  if (searchMarker) {
+    map.removeLayer(searchMarker);
+    searchMarker = null;
+  }
+}
+
+function goSearch(hit) {
+  hideSearchResults();
+  const input = $("search-input");
+  input.value = hit.label;
+  $("search-clear").hidden = !input.value;
+  input.blur();
+  setSheet(false);
+  const city = cityById(cityId);
+  if (city && city.id !== "ch" && !inCity(hit.lat, hit.lon, city)) {
+    cityId = "ch";
+    document.querySelectorAll("#city-row button").forEach((b) => {
+      b.classList.toggle("on", b.dataset.city === "ch");
+    });
+    if (view === "roofs") recomputeRoofIds();
+    paint();
+  }
+  placeSearchMarker(hit.lat, hit.lon);
+  hideRoofCanvases();
+  map.stop();
+  map.setView([hit.lat, hit.lon], hit.zoom || 14.6, { animate: false, reset: true });
+  showRoofCanvases();
+  if (view === "roofs") drawRoofs();
+  syncZoomUi();
+}
+
+async function runSearch(query) {
+  const q = query.trim();
+  $("search-clear").hidden = !q;
+  if (q.length < 2) {
+    hideSearchResults();
+    return;
+  }
+  const hits = [];
+  const parsed = parseCoords(q);
+  if (parsed) hits.push(coordHit(parsed));
+  try {
+    const places = await fetchPlaces(q);
+    places.forEach((p) => {
+      if (!hits.some((h) => Math.abs(h.lat - p.lat) < 1e-4 && Math.abs(h.lon - p.lon) < 1e-4)) {
+        hits.push(p);
+      }
+    });
+  } catch (_) {
+    if (!hits.length) {
+      renderSearchHits([]);
+      return;
+    }
+  }
+  if ($("search-input").value.trim() !== q) return;
+  renderSearchHits(hits);
+}
+
+function setupSearch() {
+  const form = $("search");
+  const input = $("search-input");
+  const clear = $("search-clear");
+  if (!form || !input) return;
+  L.DomEvent.disableClickPropagation(form);
+  L.DomEvent.disableScrollPropagation(form);
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (searchHits[searchActive] || searchHits[0]) goSearch(searchHits[searchActive] || searchHits[0]);
+    else runSearch(input.value);
+  });
+  input.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    const q = input.value;
+    clear.hidden = !q.trim();
+    searchTimer = window.setTimeout(() => runSearch(q), 220);
+  });
+  input.addEventListener("focus", () => {
+    if (isCoarse()) setSheet(false);
+    if (searchHits.length) $("search-results").hidden = false;
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      highlightSearch(searchActive + 1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      highlightSearch(searchActive - 1);
+    } else if (e.key === "Escape") {
+      hideSearchResults();
+      input.blur();
+    }
+  });
+  clear.addEventListener("click", () => {
+    input.value = "";
+    clear.hidden = true;
+    hideSearchResults();
+    clearSearchMarker();
+    input.focus();
+  });
+  document.addEventListener("click", (e) => {
+    if (!form.contains(e.target)) hideSearchResults();
+  });
 }
 
 function unpin() {
@@ -1032,6 +1348,10 @@ async function init() {
   });
   $("btn-zoom-out").addEventListener("click", zoomOutFull);
   $("btn-zoom-in").addEventListener("click", zoomInCity);
+  setupSearch();
+  if ($("sheet-toggle")) {
+    $("sheet-toggle").addEventListener("click", () => setSheet(!sheetOpen));
+  }
   map.on("zoomend", syncZoomUi);
   map.on("click", (e) => {
     if (view === "roofs") {
@@ -1082,11 +1402,13 @@ init();
 
 window.GeoSolar = {
   goCity,
+  goSearch,
   setViewMode,
   setLang,
   map,
   setBase,
   setBorders,
+  setSheet,
   zoomToPct,
   zoomOutFull,
   zoomInCity,

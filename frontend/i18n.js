@@ -10,7 +10,7 @@ const I18N = {
       <p>Switzerland has already rated about 10 million roofs (Sonnendach.ch — BFE, swisstopo, MeteoSwiss), from class 1 (low) to 5 (excellent). This explorer shows a random sample of 100,000 of those official points. Nothing here is made up, and it does not predict kWh — the official class is already based on irradiation.</p>
       <h2>Two views</h2>
       <p><strong>Each roof</strong> is the cadastre point itself. <strong>Hex 2.4 km</strong> groups nearby roofs so you can see a neighbourhood mix.</p>
-      <p><span class="em">Blue</span> is high suitability (class 4–5). <span class="dim">Orange</span> is low (class 1–2). You can jump to a city, turn the satellite on or off, and switch the interface between English, German, French and Italian.</p>
+      <p><span class="em">Blue</span> is high suitability (class 4–5). <span class="dim">Orange</span> is low (class 1–2). Search an address, Swiss postcode or coordinates (WGS84 or LV95). You can jump to a city, turn the satellite on or off, and switch the interface between English, German, French and Italian.</p>
       <p>This is a side project, not a product. Data: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
     `,
     captionHex:
@@ -19,6 +19,18 @@ const I18N = {
       'Each mark is <span class="em">one sampled roof</span> — the official Sonnendach MultiPoint, not a neighbourhood average.',
     hintHex: "Hover to preview · click to pin · scroll to zoom",
     hintRoofs: "Hover a roof · click to pin · scroll to zoom",
+    hintHexTouch: "Tap a cell · pinch to zoom",
+    hintRoofsTouch: "Tap a roof · pinch to zoom",
+    searchLabel: "Search",
+    searchPlaceholder: "Address, postcode or coordinates",
+    searchEmpty: "No place found in Switzerland",
+    searchClear: "Clear search",
+    searchWgs: "WGS84",
+    searchLv95: "LV95",
+    searchAddress: "Address",
+    searchPlz: "Postcode",
+    sheetMore: "Controls",
+    sheetLess: "Map",
     viewHex: "Hex 2.4 km",
     viewRoofs: "Each roof",
     mapOn: "Map",
@@ -75,7 +87,7 @@ const I18N = {
       <p>Die Schweiz hat bereits rund 10 Millionen Dächer bewertet (Sonnendach.ch — BFE, swisstopo, MeteoSwiss), Klasse 1 (gering) bis 5 (hervorragend). Dieser Explorer zeigt eine Zufallsstichprobe von 100'000 dieser offiziellen Punkte. Nichts ist erfunden, und es gibt keine kWh-Prognose — die offizielle Klasse beruht schon auf der Einstrahlung.</p>
       <h2>Zwei Ansichten</h2>
       <p><strong>Jedes Dach</strong> ist der Katasterpunkt selbst. <strong>Hex 2,4 km</strong> fasst benachbarte Dächer zusammen, damit man den Mix im Quartier sieht.</p>
-      <p><span class="em">Blau</span> steht für hohe Eignung (Klasse 4–5). <span class="dim">Orange</span> für geringe (Klasse 1–2). Man kann zu einer Stadt springen, das Satellitenbild ein- oder ausschalten und die Oberfläche auf Deutsch, Französisch, Italienisch oder Englisch stellen.</p>
+      <p><span class="em">Blau</span> steht für hohe Eignung (Klasse 4–5). <span class="dim">Orange</span> für geringe (Klasse 1–2). Suche nach Adresse, PLZ oder Koordinaten (WGS84 oder LV95). Man kann zu einer Stadt springen, das Satellitenbild ein- oder ausschalten und die Oberfläche auf Deutsch, Französisch, Italienisch oder Englisch stellen.</p>
       <p>Ein Nebenprojekt, kein Produkt. Daten: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
     `,
     captionHex:
@@ -84,6 +96,18 @@ const I18N = {
       'Jeder Punkt ist <span class="em">ein beprobtes Dach</span> — der offizielle Sonnendach-MultiPoint, kein Nachbarschaftsmittel.',
     hintHex: "Hover prüft · Klick pinnt · Scroll zoomt",
     hintRoofs: "Dach anfahren · Klick pinnt · Scroll zoomt",
+    hintHexTouch: "Zelle tippen · kneifen zum Zoomen",
+    hintRoofsTouch: "Dach tippen · kneifen zum Zoomen",
+    searchLabel: "Suche",
+    searchPlaceholder: "Adresse, PLZ oder Koordinaten",
+    searchEmpty: "Kein Ort in der Schweiz gefunden",
+    searchClear: "Suche löschen",
+    searchWgs: "WGS84",
+    searchLv95: "LV95",
+    searchAddress: "Adresse",
+    searchPlz: "PLZ",
+    sheetMore: "Steuerung",
+    sheetLess: "Karte",
     viewHex: "Hex 2,4 km",
     viewRoofs: "Jedes Dach",
     mapOn: "Karte",
@@ -140,7 +164,7 @@ const I18N = {
       <p>La Suisse a déjà classé environ 10 millions de toits (Sonnendach.ch — OFEN, swisstopo, MétéoSuisse), de la classe 1 (faible) à 5 (excellent). Cet explorateur montre un échantillon aléatoire de 100&nbsp;000 de ces points officiels. Rien n’est inventé, et il n’y a pas de prévision en kWh — la classe officielle repose déjà sur l’irradiation.</p>
       <h2>Deux vues</h2>
       <p><strong>Chaque toit</strong> est le point du cadastre. <strong>Hex 2,4 km</strong> regroupe les toits voisins pour voir le mix d’un quartier.</p>
-      <p>Le <span class="em">bleu</span> signale une haute aptitude (classes 4–5). L’<span class="dim">orange</span> une faible (classes 1–2). On peut sauter à une ville, activer ou non le satellite, et passer l’interface en français, allemand, italien ou anglais.</p>
+      <p>Le <span class="em">bleu</span> signale une haute aptitude (classes 4–5). L’<span class="dim">orange</span> une faible (classes 1–2). Cherchez une adresse, un NPA ou des coordonnées (WGS84 ou MN95). On peut sauter à une ville, activer ou non le satellite, et passer l’interface en français, allemand, italien ou anglais.</p>
       <p>Un projet parallèle, pas un produit. Données : <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code : <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
     `,
     captionHex:
@@ -149,6 +173,18 @@ const I18N = {
       'Chaque marque est <span class="em">un toit échantillonné</span> — le MultiPoint officiel Sonnendach, pas une moyenne de quartier.',
     hintHex: "Survoler pour prévisualiser · cliquer pour épingler · défiler pour zoomer",
     hintRoofs: "Survoler un toit · cliquer pour épingler · défiler pour zoomer",
+    hintHexTouch: "Toucher une cellule · pincer pour zoomer",
+    hintRoofsTouch: "Toucher un toit · pincer pour zoomer",
+    searchLabel: "Recherche",
+    searchPlaceholder: "Adresse, NPA ou coordonnées",
+    searchEmpty: "Aucun lieu trouvé en Suisse",
+    searchClear: "Effacer la recherche",
+    searchWgs: "WGS84",
+    searchLv95: "MN95",
+    searchAddress: "Adresse",
+    searchPlz: "NPA",
+    sheetMore: "Contrôles",
+    sheetLess: "Carte",
     viewHex: "Hex 2,4 km",
     viewRoofs: "Chaque toit",
     mapOn: "Carte",
@@ -205,7 +241,7 @@ const I18N = {
       <p>La Svizzera ha già classificato circa 10 milioni di tetti (Sonnendach.ch — UFE, swisstopo, MeteoSvizzera), dalla classe 1 (bassa) alla 5 (eccellente). Questo esploratore mostra un campione casuale di 100&nbsp;000 di questi punti ufficiali. Niente è inventato, e non c’è una previsione in kWh — la classe ufficiale si basa già sull’irraggiamento.</p>
       <h2>Due viste</h2>
       <p><strong>Ogni tetto</strong> è il punto del catasto. <strong>Hex 2,4 km</strong> raggruppa i tetti vicini per vedere il mix del quartiere.</p>
-      <p>Il <span class="em">blu</span> indica alta idoneità (classi 4–5). L’<span class="dim">arancio</span> indica bassa (classi 1–2). Si può saltare a una città, accendere o spegnere il satellite, e usare italiano, tedesco, francese o inglese.</p>
+      <p>Il <span class="em">blu</span> indica alta idoneità (classi 4–5). L’<span class="dim">arancio</span> indica bassa (classi 1–2). Cerca un indirizzo, un NPA o delle coordinate (WGS84 o MN95). Si può saltare a una città, accendere o spegnere il satellite, e usare italiano, tedesco, francese o inglese.</p>
       <p>Un progetto parallelo, non un prodotto. Dati: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Codice: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
     `,
     captionHex:
@@ -214,6 +250,18 @@ const I18N = {
       'Ogni segno è <span class="em">un tetto campionato</span> — il MultiPoint ufficiale Sonnendach, non una media di quartiere.',
     hintHex: "Passa per l’anteprima · clicca per fissare · scorri per lo zoom",
     hintRoofs: "Passa su un tetto · clicca per fissare · scorri per lo zoom",
+    hintHexTouch: "Tocca una cella · pizzica per lo zoom",
+    hintRoofsTouch: "Tocca un tetto · pizzica per lo zoom",
+    searchLabel: "Cerca",
+    searchPlaceholder: "Indirizzo, NPA o coordinate",
+    searchEmpty: "Nessun luogo trovato in Svizzera",
+    searchClear: "Cancella ricerca",
+    searchWgs: "WGS84",
+    searchLv95: "MN95",
+    searchAddress: "Indirizzo",
+    searchPlz: "NPA",
+    sheetMore: "Controlli",
+    sheetLess: "Mappa",
     viewHex: "Hex 2,4 km",
     viewRoofs: "Ogni tetto",
     mapOn: "Mappa",
