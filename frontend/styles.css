@@ -202,6 +202,10 @@ body {
   border-color: var(--copper);
 }
 
+.search input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
 #search-clear {
   position: absolute;
   top: 0;

@@ -31,7 +31,7 @@ def scene_title():
     fig.patch.set_facecolor(PAPER)
     fig.text(0.08, 0.58, "GeoSolar AI", color=INK, fontsize=42, fontweight="medium")
     fig.text(0.08, 0.48, "Swiss rooftop solar, from the Sonnendach cadastre.", color=MUTED, fontsize=16)
-    fig.text(0.08, 0.22, "Hex neighbourhoods  ·  each roof  ·  map on / off", color=COPPER, fontsize=12)
+    fig.text(0.08, 0.22, "Hex neighbourhoods  ·  each roof  ·  search a place", color=COPPER, fontsize=12)
     fig.text(0.08, 0.14, "EN / DE / FR / IT", color=MUTED, fontsize=12)
     return fig
 
@@ -162,45 +162,60 @@ def record_live():
             context.add_init_script(
                 "localStorage.setItem('geosolar-lang', 'en');"
                 "localStorage.setItem('geosolar-base', 'on');"
+                "localStorage.setItem('geosolar-borders', 'on');"
             )
             page = context.new_page()
             page.goto(f"http://127.0.0.1:{port}/?demo=1", wait_until="domcontentloaded")
             wait_ready(page)
             wait_tiles(page, min_ok=8, extra_ms=2000)
 
-            # 1 default: Switzerland roofs, map on
+            # 1 default: Switzerland roofs, map on, search visible
             shots.append(grab(page))
 
-            # 2 hex neighbourhoods
-            act(page, "GeoSolar.setViewMode('hex')", min_ok=4, extra_ms=1200)
+            # 2 type a place — official geo.admin suggestions
+            page.fill("#search-input", "Wiedlisbach")
+            page.wait_for_function(
+                "() => [...document.querySelectorAll('#search-results li')].some(li => !li.classList.contains('empty'))",
+                timeout=15000,
+            )
+            page.wait_for_timeout(400)
             shots.append(grab(page))
 
-            # 3 class floor 4
-            act(page, "GeoSolar.setFloor(4)", extra_ms=700)
-            shots.append(grab(page))
-
-            # 4 colour by share of class 4–5
-            act(page, "GeoSolar.setFloor(1); GeoSolar.setMode('pct4')", extra_ms=700)
-            shots.append(grab(page))
-
-            # 5 Sion, map on
+            # 3 jump to that place
             act(
                 page,
-                "GeoSolar.setMode('mean'); GeoSolar.goCity('vs')",
+                "GeoSolar.goSearch({label:'Wiedlisbach (BE)',lat:47.24742,lon:7.64753,zoom:13.6})",
                 min_ok=8,
                 extra_ms=1800,
             )
             shots.append(grab(page))
 
-            # 6 Zürich hex, streets through cells
+            # 4 hex neighbourhoods
+            act(page, "GeoSolar.setViewMode('hex'); GeoSolar.goCity('ch')", min_ok=4, extra_ms=1200)
+            shots.append(grab(page))
+
+            # 5 class floor 4
+            act(page, "GeoSolar.setFloor(4)", extra_ms=700)
+            shots.append(grab(page))
+
+            # 6 Sion, map on
+            act(
+                page,
+                "GeoSolar.setFloor(1); GeoSolar.setMode('mean'); GeoSolar.goCity('vs')",
+                min_ok=8,
+                extra_ms=1800,
+            )
+            shots.append(grab(page))
+
+            # 7 Zürich hex, streets through cells
             act(page, "GeoSolar.goCity('zh')", min_ok=8, extra_ms=1800)
             shots.append(grab(page))
 
-            # 7 No map
+            # 8 No map
             act(page, "GeoSolar.setBase(false)", extra_ms=800, wait_map=False)
             shots.append(grab(page))
 
-            # 8 Map back defaults to each roof on Zürich
+            # 9 Map back defaults to each roof on Zürich
             act(
                 page,
                 "GeoSolar.setBase(true)",
@@ -209,11 +224,11 @@ def record_live():
             )
             shots.append(grab(page))
 
-            # 9 German UI
+            # 10 German UI
             act(page, "GeoSolar.setLang('de')", min_ok=10, extra_ms=1400)
             shots.append(grab(page))
 
-            # 10 national hex, French, map on
+            # 11 national hex, French, map on
             act(
                 page,
                 "GeoSolar.setLang('fr'); GeoSolar.setViewMode('hex'); GeoSolar.goCity('ch')",
@@ -262,7 +277,11 @@ def main():
 
     print("capturing live explorer…")
     shots = record_live()
-    durations = [2.8, 2.2, 2.0, 2.0, 2.4, 2.4, 2.4, 3.0, 2.0, 2.2]
+    preview = OUT / "_demo_preview"
+    preview.mkdir(exist_ok=True)
+    for i, im in enumerate(shots):
+        im.save(preview / f"f{i:02d}.png")
+    durations = [2.6, 2.2, 2.6, 2.0, 2.0, 2.2, 2.2, 2.2, 2.6, 1.8, 2.2]
     for im, sec in zip(shots, durations):
         hold(frames, im, sec)
 
