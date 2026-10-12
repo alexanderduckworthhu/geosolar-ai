@@ -173,14 +173,18 @@ body {
   z-index: 50;
   top: 12px;
   left: 28px;
-  width: min(380px, calc(100% - 400px));
+  width: min(420px, calc(100% - 400px));
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0;
+  gap: 6px;
+}
+
+.search-field {
+  position: relative;
+  min-width: 0;
 }
 
 .search input {
-  grid-column: 1 / -1;
   width: 100%;
   height: 42px;
   padding: 0 40px 0 14px;
@@ -221,6 +225,44 @@ body {
 
 #search-clear:hover {
   color: var(--ink);
+}
+
+#btn-locate {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(16, 26, 22, 0.92);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  white-space: nowrap;
+}
+
+#btn-locate:hover,
+#btn-locate.on {
+  color: var(--ink);
+  border-color: var(--copper);
+}
+
+.load-status {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  z-index: 8;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: rgba(8, 17, 14, 0.78);
+  color: var(--sun);
+  font-size: 0.82rem;
+  pointer-events: none;
 }
 
 #search-results {
@@ -717,16 +759,29 @@ body.about-page {
     border-radius: 2px;
     background: #3a4d44;
   }
+  .sheet-peek-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+  }
   #sheet-peek {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
     color: var(--ink);
     font-family: Fraunces, serif;
     font-size: 0.95rem;
   }
+  .sheet-peek-metrics {
+    color: var(--muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
   .panel {
-    --sheet-peek: calc(64px + env(safe-area-inset-bottom));
+    --sheet-peek: calc(78px + env(safe-area-inset-bottom));
     position: absolute;
     left: 0;
     right: 0;

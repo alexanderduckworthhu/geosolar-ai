@@ -7,11 +7,11 @@ const I18N = {
     aboutHtml: `
       <h1>About</h1>
       <p class="lead">A small map of Swiss rooftops and how well they suit solar panels.</p>
-      <p>Switzerland has already rated about 10 million roofs (Sonnendach.ch — BFE, swisstopo, MeteoSwiss), from class 1 (low) to 5 (excellent). This explorer shows a random sample of 100,000 of those official points. Nothing here is made up, and it does not predict kWh — the official class is already based on irradiation.</p>
+      <p>Switzerland has already rated about 10 million roofs (Sonnendach.ch — BFE, swisstopo, MeteoSwiss), from class 1 (low) to 5 (excellent). Neighbourhood hexes are counted from that full cadastre. Each-roof view shows a random sample of 100,000 official points so the page stays light. Nothing here is made up, and it does not predict kWh — the official class is already based on irradiation.</p>
       <h2>Two views</h2>
-      <p><strong>Each roof</strong> is the cadastre point itself. <strong>Hex 2.4 km</strong> groups nearby roofs so you can see a neighbourhood mix.</p>
-      <p><span class="em">Blue</span> is high suitability (class 4–5). <span class="dim">Orange</span> is low (class 1–2). Search an address, Swiss postcode or coordinates (WGS84 or LV95). You can jump to a city, turn the satellite on or off, and switch the interface between English, German, French and Italian.</p>
-      <p>This is a side project, not a product. Data: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
+      <p><strong>Each roof</strong> is the cadastre point itself. <strong>Hex 2.4 km</strong> groups nearby roofs so you can see a neighbourhood mix. A cell on the Rhine can overlap Austria even when every roof in it is Swiss; the white country line is a simplified outline.</p>
+      <p><span class="em">Blue</span> is high suitability (class 4–5). <span class="dim">Orange</span> is low (class 1–2). Search an address, Swiss postcode or coordinates (WGS84 or LV95), or use your location. You can jump to a city, turn the satellite on or off, and switch the interface between English, German, French and Italian.</p>
+      <p>The map is the cadastre. A classifier lives in the GitHub repo and is not served here. This is a side project, not a product. Data: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
     `,
     captionHex:
       'Tap a cell. <span class="em">Blue</span> is high suitability (class 4–5). <span class="dim">Orange</span> is low (class 1–2). Cells are 2.4 km clusters from Sonnendach.ch.',
@@ -29,6 +29,11 @@ const I18N = {
     searchLv95: "LV95",
     searchAddress: "Address",
     searchPlz: "Postcode",
+    locate: "Locate",
+    locateFail: "Could not read your location",
+    locateOutside: "That point is outside Switzerland",
+    loadHex: "Loading neighbourhoods…",
+    loadRoofs: "Loading 100,000 roofs…",
     sheetMore: "Controls",
     sheetLess: "Map",
     viewHex: "Hex 2.4 km",
@@ -68,13 +73,13 @@ const I18N = {
     subHexPin: (n, slope, aspect) => `${n} roofs · mean slope ${slope}° · aspect ${aspect}°`,
     subRoofPin: (area, slope, aspect) => `${area} m² · slope ${slope}° · aspect ${aspect}°`,
     insightSame: (pct, slope) =>
-      `Class 4–5 roofs are <strong>${pct}%</strong> of this set — the same mix as the national sample. Mean slope ${slope}°.`,
+      `Class 4–5 roofs are <strong>${pct}%</strong> of this set — the same mix as Switzerland. Mean slope ${slope}°.`,
     insightDelta: (scope, abs, dir, pct, vs, slope) =>
-      `${scope} is <strong>${abs}</strong> points ${dir} the Swiss sample on class 4–5 roofs (${pct}% vs ${vs}%). Mean slope ${slope}°.`,
+      `${scope} is <strong>${abs}</strong> points ${dir} Switzerland on class 4–5 roofs (${pct}% vs ${vs}%). Mean slope ${slope}°.`,
     insightRoof: (k, label, slope, aspect, area) =>
       `Official Sonnendach class <strong>${k}</strong> (${label}). Slope ${slope}°, aspect ${aspect}°, ${area} m² — the cadastre MultiPoint.`,
     baseline: (mean, pct) =>
-      `Across Switzerland, sampled roofs average class <strong>${mean}</strong> and <strong>${pct}%</strong> class 4–5.`,
+      `Across Switzerland, roofs average class <strong>${mean}</strong> and <strong>${pct}%</strong> class 4–5.`,
   },
   de: {
     title: "GeoSolar AI — Schweizer Dachflächen",
@@ -84,11 +89,11 @@ const I18N = {
     aboutHtml: `
       <h1>Über das Projekt</h1>
       <p class="lead">Eine kleine Karte Schweizer Dächer und ihrer Eignung für Solarenergie.</p>
-      <p>Die Schweiz hat bereits rund 10 Millionen Dächer bewertet (Sonnendach.ch — BFE, swisstopo, MeteoSwiss), Klasse 1 (gering) bis 5 (hervorragend). Dieser Explorer zeigt eine Zufallsstichprobe von 100'000 dieser offiziellen Punkte. Nichts ist erfunden, und es gibt keine kWh-Prognose — die offizielle Klasse beruht schon auf der Einstrahlung.</p>
+      <p>Die Schweiz hat bereits rund 10 Millionen Dächer bewertet (Sonnendach.ch — BFE, swisstopo, MeteoSwiss), Klasse 1 (gering) bis 5 (hervorragend). Die Hex-Nachbarschaften zählen das ganze Kataster. Die Dachansicht zeigt eine Zufallsstichprobe von 100'000 offiziellen Punkten, damit die Seite leicht bleibt. Nichts ist erfunden, und es gibt keine kWh-Prognose — die offizielle Klasse beruht schon auf der Einstrahlung.</p>
       <h2>Zwei Ansichten</h2>
-      <p><strong>Jedes Dach</strong> ist der Katasterpunkt selbst. <strong>Hex 2,4 km</strong> fasst benachbarte Dächer zusammen, damit man den Mix im Quartier sieht.</p>
-      <p><span class="em">Blau</span> steht für hohe Eignung (Klasse 4–5). <span class="dim">Orange</span> für geringe (Klasse 1–2). Suche nach Adresse, PLZ oder Koordinaten (WGS84 oder LV95). Man kann zu einer Stadt springen, das Satellitenbild ein- oder ausschalten und die Oberfläche auf Deutsch, Französisch, Italienisch oder Englisch stellen.</p>
-      <p>Ein Nebenprojekt, kein Produkt. Daten: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
+      <p><strong>Jedes Dach</strong> ist der Katasterpunkt selbst. <strong>Hex 2,4 km</strong> fasst benachbarte Dächer zusammen. Eine Zelle am Rhein kann nach Österreich ragen, auch wenn jedes Dach darin schweizerisch ist; die weisse Landesgrenze ist vereinfacht.</p>
+      <p><span class="em">Blau</span> steht für hohe Eignung (Klasse 4–5). <span class="dim">Orange</span> für geringe (Klasse 1–2). Suche nach Adresse, PLZ oder Koordinaten (WGS84 oder LV95), oder nutze den Standort. Man kann zu einer Stadt springen, das Satellitenbild ein- oder ausschalten und die Oberfläche auf Deutsch, Französisch, Italienisch oder Englisch stellen.</p>
+      <p>Die Karte ist der Kataster. Ein Klassifikator liegt im GitHub-Repo und wird hier nicht ausgeliefert. Ein Nebenprojekt, kein Produkt. Daten: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
     `,
     captionHex:
       'Zelle wählen. <span class="em">Blau</span> steht für hohe Eignung (Klasse 4–5). <span class="dim">Orange</span> für geringe (Klasse 1–2). Zellen: 2,4 km aus Sonnendach.ch.',
@@ -106,6 +111,11 @@ const I18N = {
     searchLv95: "LV95",
     searchAddress: "Adresse",
     searchPlz: "PLZ",
+    locate: "Standort",
+    locateFail: "Standort nicht lesbar",
+    locateOutside: "Dieser Punkt liegt ausserhalb der Schweiz",
+    loadHex: "Nachbarschaften laden…",
+    loadRoofs: "100'000 Dächer laden…",
     sheetMore: "Steuerung",
     sheetLess: "Karte",
     viewHex: "Hex 2,4 km",
@@ -145,13 +155,13 @@ const I18N = {
     subHexPin: (n, slope, aspect) => `${n} Dächer · mittlere Neigung ${slope}° · Ausrichtung ${aspect}°`,
     subRoofPin: (area, slope, aspect) => `${area} m² · Neigung ${slope}° · Ausrichtung ${aspect}°`,
     insightSame: (pct, slope) =>
-      `Klasse 4–5 macht <strong>${pct}%</strong> dieses Ausschnitts aus — derselbe Mix wie die nationale Stichprobe. Mittlere Neigung ${slope}°.`,
+      `Klasse 4–5 macht <strong>${pct}%</strong> dieses Ausschnitts aus — derselbe Mix wie die Schweiz. Mittlere Neigung ${slope}°.`,
     insightDelta: (scope, abs, dir, pct, vs, slope) =>
-      `${scope} liegt <strong>${abs}</strong> Punkte ${dir} der Schweizer Stichprobe bei Klasse 4–5 (${pct}% vs ${vs}%). Mittlere Neigung ${slope}°.`,
+      `${scope} liegt <strong>${abs}</strong> Punkte ${dir} der Schweiz bei Klasse 4–5 (${pct}% vs ${vs}%). Mittlere Neigung ${slope}°.`,
     insightRoof: (k, label, slope, aspect, area) =>
       `Offizielle Sonnendach-Klasse <strong>${k}</strong> (${label}). Neigung ${slope}°, Ausrichtung ${aspect}°, ${area} m² — der Kataster-MultiPoint.`,
     baseline: (mean, pct) =>
-      `In der Schweiz liegen beprobte Dächer im Mittel bei Klasse <strong>${mean}</strong> und <strong>${pct}%</strong> Klasse 4–5.`,
+      `In der Schweiz liegen Dächer im Mittel bei Klasse <strong>${mean}</strong> und <strong>${pct}%</strong> Klasse 4–5.`,
   },
   fr: {
     title: "GeoSolar AI — Toits solaires suisses",
@@ -161,11 +171,11 @@ const I18N = {
     aboutHtml: `
       <h1>À propos</h1>
       <p class="lead">Une petite carte des toits suisses et de leur aptitude solaire.</p>
-      <p>La Suisse a déjà classé environ 10 millions de toits (Sonnendach.ch — OFEN, swisstopo, MétéoSuisse), de la classe 1 (faible) à 5 (excellent). Cet explorateur montre un échantillon aléatoire de 100&nbsp;000 de ces points officiels. Rien n’est inventé, et il n’y a pas de prévision en kWh — la classe officielle repose déjà sur l’irradiation.</p>
+      <p>La Suisse a déjà classé environ 10 millions de toits (Sonnendach.ch — OFEN, swisstopo, MétéoSuisse), de la classe 1 (faible) à 5 (excellent). Les hexagones comptent tout le cadastre. La vue toit par toit montre un échantillon de 100&nbsp;000 points officiels pour garder la page légère. Rien n’est inventé, et il n’y a pas de prévision en kWh — la classe officielle repose déjà sur l’irradiation.</p>
       <h2>Deux vues</h2>
-      <p><strong>Chaque toit</strong> est le point du cadastre. <strong>Hex 2,4 km</strong> regroupe les toits voisins pour voir le mix d’un quartier.</p>
-      <p>Le <span class="em">bleu</span> signale une haute aptitude (classes 4–5). L’<span class="dim">orange</span> une faible (classes 1–2). Cherchez une adresse, un NPA ou des coordonnées (WGS84 ou MN95). On peut sauter à une ville, activer ou non le satellite, et passer l’interface en français, allemand, italien ou anglais.</p>
-      <p>Un projet parallèle, pas un produit. Données : <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code : <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
+      <p><strong>Chaque toit</strong> est le point du cadastre. <strong>Hex 2,4 km</strong> regroupe les toits voisins. Une cellule sur le Rhin peut empiéter sur l’Autriche même si chaque toit est suisse ; le trait blanc du pays est simplifié.</p>
+      <p>Le <span class="em">bleu</span> signale une haute aptitude (classes 4–5). L’<span class="dim">orange</span> une faible (classes 1–2). Cherchez une adresse, un NPA ou des coordonnées (WGS84 ou MN95), ou utilisez votre position. On peut sauter à une ville, activer ou non le satellite, et passer l’interface en français, allemand, italien ou anglais.</p>
+      <p>La carte est le cadastre. Un classifieur vit dans le dépôt GitHub et n’est pas servi ici. Un projet parallèle, pas un produit. Données : <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Code : <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
     `,
     captionHex:
       'Choisissez une cellule. Le <span class="em">bleu</span> signale une haute aptitude (classes 4–5). L’<span class="dim">orange</span> une faible (classes 1–2). Cellules de 2,4 km, Sonnendach.ch.',
@@ -183,6 +193,11 @@ const I18N = {
     searchLv95: "MN95",
     searchAddress: "Adresse",
     searchPlz: "NPA",
+    locate: "Position",
+    locateFail: "Position illisible",
+    locateOutside: "Ce point est hors de Suisse",
+    loadHex: "Chargement des quartiers…",
+    loadRoofs: "Chargement de 100 000 toits…",
     sheetMore: "Contrôles",
     sheetLess: "Carte",
     viewHex: "Hex 2,4 km",
@@ -222,13 +237,13 @@ const I18N = {
     subHexPin: (n, slope, aspect) => `${n} toits · pente moy. ${slope}° · orientation ${aspect}°`,
     subRoofPin: (area, slope, aspect) => `${area} m² · pente ${slope}° · orientation ${aspect}°`,
     insightSame: (pct, slope) =>
-      `Les classes 4–5 représentent <strong>${pct}%</strong> de cet ensemble — le même mix que l’échantillon national. Pente moyenne ${slope}°.`,
+      `Les classes 4–5 représentent <strong>${pct}%</strong> de cet ensemble — le même mix que la Suisse. Pente moyenne ${slope}°.`,
     insightDelta: (scope, abs, dir, pct, vs, slope) =>
-      `${scope} est <strong>${abs}</strong> points ${dir} l’échantillon suisse pour les classes 4–5 (${pct}% vs ${vs}%). Pente moyenne ${slope}°.`,
+      `${scope} est <strong>${abs}</strong> points ${dir} la Suisse pour les classes 4–5 (${pct}% vs ${vs}%). Pente moyenne ${slope}°.`,
     insightRoof: (k, label, slope, aspect, area) =>
       `Classe Sonnendach officielle <strong>${k}</strong> (${label}). Pente ${slope}°, orientation ${aspect}°, ${area} m² — le MultiPoint du cadastre.`,
     baseline: (mean, pct) =>
-      `En Suisse, les toits échantillonnés ont en moyenne la classe <strong>${mean}</strong> et <strong>${pct}%</strong> en classes 4–5.`,
+      `En Suisse, les toits ont en moyenne la classe <strong>${mean}</strong> et <strong>${pct}%</strong> en classes 4–5.`,
   },
   it: {
     title: "GeoSolar AI — Tetti solari svizzeri",
@@ -238,11 +253,11 @@ const I18N = {
     aboutHtml: `
       <h1>Info</h1>
       <p class="lead">Una piccola mappa dei tetti svizzeri e della loro idoneità al solare.</p>
-      <p>La Svizzera ha già classificato circa 10 milioni di tetti (Sonnendach.ch — UFE, swisstopo, MeteoSvizzera), dalla classe 1 (bassa) alla 5 (eccellente). Questo esploratore mostra un campione casuale di 100&nbsp;000 di questi punti ufficiali. Niente è inventato, e non c’è una previsione in kWh — la classe ufficiale si basa già sull’irraggiamento.</p>
+      <p>La Svizzera ha già classificato circa 10 milioni di tetti (Sonnendach.ch — UFE, swisstopo, MeteoSvizzera), dalla classe 1 (bassa) alla 5 (eccellente). Gli esagoni contano tutto il catasto. La vista tetto per tetto mostra un campione di 100&nbsp;000 punti ufficiali per tenere la pagina leggera. Niente è inventato, e non c’è una previsione in kWh — la classe ufficiale si basa già sull’irraggiamento.</p>
       <h2>Due viste</h2>
-      <p><strong>Ogni tetto</strong> è il punto del catasto. <strong>Hex 2,4 km</strong> raggruppa i tetti vicini per vedere il mix del quartiere.</p>
-      <p>Il <span class="em">blu</span> indica alta idoneità (classi 4–5). L’<span class="dim">arancio</span> indica bassa (classi 1–2). Cerca un indirizzo, un NPA o delle coordinate (WGS84 o MN95). Si può saltare a una città, accendere o spegnere il satellite, e usare italiano, tedesco, francese o inglese.</p>
-      <p>Un progetto parallelo, non un prodotto. Dati: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Codice: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
+      <p><strong>Ogni tetto</strong> è il punto del catasto. <strong>Hex 2,4 km</strong> raggruppa i tetti vicini. Una cella sul Reno può sporgere in Austria anche se ogni tetto è svizzero; il tratto bianco del paese è semplificato.</p>
+      <p>Il <span class="em">blu</span> indica alta idoneità (classi 4–5). L’<span class="dim">arancio</span> indica bassa (classi 1–2). Cerca un indirizzo, un NPA o delle coordinate (WGS84 o MN95), oppure usa la posizione. Si può saltare a una città, accendere o spegnere il satellite, e usare italiano, tedesco, francese o inglese.</p>
+      <p>La mappa è il catasto. Un classificatore sta nel repo GitHub e qui non è servito. Un progetto parallelo, non un prodotto. Dati: <a href="https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie">opendata.swiss</a>. Codice: <a href="https://github.com/alexanderduckworthhu/geosolar-ai">GitHub</a>.</p>
     `,
     captionHex:
       'Scegli una cella. Il <span class="em">blu</span> indica alta idoneità (classi 4–5). L’<span class="dim">arancio</span> indica bassa (classi 1–2). Celle da 2,4 km, Sonnendach.ch.',
@@ -260,6 +275,11 @@ const I18N = {
     searchLv95: "MN95",
     searchAddress: "Indirizzo",
     searchPlz: "NPA",
+    locate: "Posizione",
+    locateFail: "Posizione non leggibile",
+    locateOutside: "Questo punto è fuori dalla Svizzera",
+    loadHex: "Caricamento quartieri…",
+    loadRoofs: "Caricamento di 100.000 tetti…",
     sheetMore: "Controlli",
     sheetLess: "Mappa",
     viewHex: "Hex 2,4 km",
@@ -299,12 +319,12 @@ const I18N = {
     subHexPin: (n, slope, aspect) => `${n} tetti · pendenza media ${slope}° · esposizione ${aspect}°`,
     subRoofPin: (area, slope, aspect) => `${area} m² · pendenza ${slope}° · esposizione ${aspect}°`,
     insightSame: (pct, slope) =>
-      `Le classi 4–5 sono il <strong>${pct}%</strong> di questo insieme — lo stesso mix del campione nazionale. Pendenza media ${slope}°.`,
+      `Le classi 4–5 sono il <strong>${pct}%</strong> di questo insieme — lo stesso mix della Svizzera. Pendenza media ${slope}°.`,
     insightDelta: (scope, abs, dir, pct, vs, slope) =>
-      `${scope} è <strong>${abs}</strong> punti ${dir} il campione svizzero per le classi 4–5 (${pct}% vs ${vs}%). Pendenza media ${slope}°.`,
+      `${scope} è <strong>${abs}</strong> punti ${dir} la Svizzera per le classi 4–5 (${pct}% vs ${vs}%). Pendenza media ${slope}°.`,
     insightRoof: (k, label, slope, aspect, area) =>
       `Classe Sonnendach ufficiale <strong>${k}</strong> (${label}). Pendenza ${slope}°, esposizione ${aspect}°, ${area} m² — il MultiPoint del catasto.`,
     baseline: (mean, pct) =>
-      `In Svizzera i tetti campionati hanno in media classe <strong>${mean}</strong> e <strong>${pct}%</strong> in classi 4–5.`,
+      `In Svizzera i tetti hanno in media classe <strong>${mean}</strong> e <strong>${pct}%</strong> in classi 4–5.`,
   },
 };

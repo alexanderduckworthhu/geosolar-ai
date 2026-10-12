@@ -4,9 +4,23 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>GeoSolar AI — Swiss rooftop solar</title>
+    <meta
+      name="description"
+      content="Explorer of official Sonnendach.ch rooftop solar classes for Switzerland. Hex neighbourhoods from 10 million roofs, plus a 100,000-roof sample."
+    />
+    <meta property="og:title" content="GeoSolar AI — Swiss rooftop solar" />
+    <meta
+      property="og:description"
+      content="Official BFE / swisstopo / MeteoSwiss roof classes on a map. No kWh forecast."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://alexanderduckworthhu.github.io/geosolar-ai/" />
+    <meta property="og:image" content="https://alexanderduckworthhu.github.io/geosolar-ai/og.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="https://alexanderduckworthhu.github.io/geosolar-ai/" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://server.arcgisonline.com" />
-    <link rel="preload" href="data/hexes.json?v=2" as="fetch" crossorigin />
+    <link rel="preload" href="data/hexes.json?v=3" as="fetch" crossorigin />
     <link rel="preload" href="data/roofs.json" as="fetch" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,7 +34,7 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=19" />
+    <link rel="stylesheet" href="styles.css?v=21" />
   </head>
   <body>
     <header class="top">
@@ -48,29 +62,36 @@
     <div class="stage">
       <div class="map-wrap">
         <div id="map" role="application" aria-label="Switzerland solar map"></div>
+        <p class="load-status" id="load-status" hidden></p>
         <p class="hint" id="hint"></p>
       </div>
       <form class="search" id="search" autocomplete="off">
         <label class="sr-only" id="lbl-search" for="search-input"></label>
-        <input
-          id="search-input"
-          type="search"
-          enterkeyhint="search"
-          autocapitalize="off"
-          autocomplete="off"
-          autocorrect="off"
-          spellcheck="false"
-          aria-autocomplete="list"
-          aria-controls="search-results"
-        />
-        <button type="button" id="search-clear" hidden>×</button>
+        <div class="search-field">
+          <input
+            id="search-input"
+            type="search"
+            enterkeyhint="search"
+            autocapitalize="off"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+            aria-autocomplete="list"
+            aria-controls="search-results"
+          />
+          <button type="button" id="search-clear" hidden>×</button>
+        </div>
+        <button type="button" id="btn-locate" hidden></button>
         <ul id="search-results" role="listbox" hidden></ul>
       </form>
 
       <aside class="panel" id="panel">
         <button type="button" class="sheet-handle" id="sheet-toggle" aria-expanded="false">
           <i class="sheet-bar"></i>
-          <span id="sheet-peek"></span>
+          <span class="sheet-peek-copy">
+            <span id="sheet-peek"></span>
+            <span class="sheet-peek-metrics" id="sheet-peek-metrics"></span>
+          </span>
         </button>
         <div class="view-row" id="view-row">
           <button type="button" data-view="hex" id="btn-hex"></button>
@@ -152,7 +173,7 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script src="i18n.js?v=10"></script>
-    <script src="app.js?v=25"></script>
+    <script src="i18n.js?v=11"></script>
+    <script src="app.js?v=27"></script>
   </body>
 </html>
