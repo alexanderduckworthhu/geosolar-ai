@@ -990,11 +990,123 @@ function syncSheetLabel() {
 function setSheet(open) {
   sheetOpen = Boolean(open);
   document.body.classList.toggle("sheet-open", sheetOpen);
+  const panel = $("panel");
+  if (panel) {
+    panel.classList.remove("sheet-dragging");
+    panel.style.transform = "";
+  }
   syncSheetLabel();
   requestAnimationFrame(() => {
     map.invalidateSize();
     if (view === "roofs") drawRoofs();
   });
+}
+
+function isMobileSheet() {
+  return window.matchMedia("(max-width: 900px)").matches;
+}
+
+function setupSheetDrag() {
+  const panel = $("panel");
+  if (!panel) return;
+  let pid = null;
+  let armed = false;
+  let dragging = false;
+  let startedOpen = false;
+  let x0 = 0;
+  let y0 = 0;
+  let off0 = 0;
+  let lastY = 0;
+  let lastT = 0;
+  let vel = 0;
+  let ignoreClick = false;
+
+  function maxOff() {
+    return Math.max(120, panel.offsetHeight - 72);
+  }
+
+  function setOff(y) {
+    const max = maxOff();
+    panel.style.transform = `translateY(${Math.max(0, Math.min(max, y))}px)`;
+  }
+
+  function onDown(e) {
+    if (!isMobileSheet() || pid != null) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (e.target.closest("input[type=range], a")) return;
+    if (sheetOpen && panel.scrollTop > 8 && !e.target.closest(".sheet-handle")) return;
+    pid = e.pointerId;
+    armed = true;
+    dragging = false;
+    startedOpen = sheetOpen;
+    x0 = e.clientX;
+    y0 = e.clientY;
+    off0 = sheetOpen ? 0 : maxOff();
+    lastY = e.clientY;
+    lastT = e.timeStamp;
+    vel = 0;
+    try {
+      panel.setPointerCapture(e.pointerId);
+    } catch (_) {}
+  }
+
+  function onMove(e) {
+    if (!armed || e.pointerId !== pid) return;
+    const dx = e.clientX - x0;
+    const dy = e.clientY - y0;
+    const dt = Math.max(8, e.timeStamp - lastT);
+    vel = (e.clientY - lastY) / dt;
+    lastY = e.clientY;
+    lastT = e.timeStamp;
+    if (!dragging) {
+      if (Math.hypot(dx, dy) < 12) return;
+      if (Math.abs(dx) > Math.abs(dy) * 1.15) {
+        armed = false;
+        pid = null;
+        return;
+      }
+      if (sheetOpen && dy < 0) {
+        armed = false;
+        pid = null;
+        return;
+      }
+      dragging = true;
+      ignoreClick = true;
+      panel.classList.add("sheet-dragging");
+    }
+    e.preventDefault();
+    setOff(off0 + dy);
+  }
+
+  function onUp(e) {
+    if (pid == null || (e.pointerId != null && e.pointerId !== pid)) return;
+    const wasDragging = dragging;
+    const y = off0 + (e.clientY - y0);
+    armed = false;
+    dragging = false;
+    pid = null;
+    if (!wasDragging) return;
+    const max = maxOff();
+    if (startedOpen) setSheet(!(vel > 0.35 || y > 72));
+    else setSheet(vel < -0.35 || y < max - 72);
+    window.setTimeout(() => {
+      ignoreClick = false;
+    }, 120);
+  }
+
+  panel.addEventListener("pointerdown", onDown);
+  panel.addEventListener("pointermove", onMove, { passive: false });
+  panel.addEventListener("pointerup", onUp);
+  panel.addEventListener("pointercancel", onUp);
+  panel.addEventListener(
+    "click",
+    (e) => {
+      if (!ignoreClick) return;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    true
+  );
 }
 
 function stripHtml(s) {
@@ -1349,9 +1461,15 @@ async function init() {
   $("btn-zoom-out").addEventListener("click", zoomOutFull);
   $("btn-zoom-in").addEventListener("click", zoomInCity);
   setupSearch();
+  setupSheetDrag();
   if ($("sheet-toggle")) {
-    $("sheet-toggle").addEventListener("click", () => setSheet(!sheetOpen));
+    $("sheet-toggle").addEventListener("click", () => {
+      if (isMobileSheet()) setSheet(!sheetOpen);
+    });
   }
+  $("map").addEventListener("click", () => {
+    if (isMobileSheet() && sheetOpen) setSheet(false);
+  });
   map.on("zoomend", syncZoomUi);
   map.on("click", (e) => {
     if (view === "roofs") {
