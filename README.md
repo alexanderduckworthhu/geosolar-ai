@@ -36,7 +36,7 @@ Feature walkthrough: `visuals/explorer_demo.mp4`
 
 [*Eignung von Hausdächern für die Nutzung von Sonnenenergie*](https://opendata.swiss/de/dataset/eignung-von-hausdachern-fur-die-nutzung-von-sonnenenergie) — BFE / swisstopo / MeteoSwiss.
 
-Hexes are binned in EPSG:2056 (2.4 km), clipped to swissBOUNDARIES3D so they do not draw across Austria, Germany, or France, then drawn in WGS84. A cell on the Rhine can still sit against a simplified country line. The roof view plots a 100,000-roof sample of official coordinates — not the full 10 million points, which would be too heavy for the browser.
+Hexes are binned in EPSG:2056 (2.4 km), clipped to swissBOUNDARIES3D so they do not draw across Austria, Liechtenstein, Germany, or France, then drawn in WGS84. A cell on the Rhine can still sit against a simplified country line. The roof view plots a 100,000-roof sample of official coordinates — not the full 10 million points, which would be too heavy for the browser.
 
 Rebuild maps:
 

@@ -382,6 +382,7 @@ body {
   top: 0;
   z-index: 450;
   pointer-events: none;
+  transform-origin: 0 0;
 }
 
 .leaflet-div-icon.city-label {

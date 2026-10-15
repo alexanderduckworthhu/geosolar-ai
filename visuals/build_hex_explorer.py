@@ -4,7 +4,7 @@
 Hex neighbourhoods are counted from the full 10,071,755-roof cadastre when
 the official FileGDB zip is present. Each-roof JSON stays the 100k sample.
 Hex polygons are clipped to swissBOUNDARIES3D (ICC=CH) so cells do not
-draw across the Austrian / German / French line.
+draw across Austria, Liechtenstein, Germany, or France.
 """
 
 from __future__ import annotations
