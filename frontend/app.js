@@ -81,8 +81,7 @@ const map = L.map("map", {
   zoomDelta: 1,
   wheelPxPerZoomLevel: 12,
   wheelDebounceTime: 90,
-  zoomAnimation: true,
-  zoomAnimationThreshold: 18,
+  zoomAnimation: false,
   fadeAnimation: false,
   markerZoomAnimation: false,
   maxBounds: [
@@ -132,13 +131,31 @@ function freezeCanvas() {
 }
 
 let snapTimer = 0;
+let snapTileZoom = null;
+
+function revealCurrentTiles(layer) {
+  const z = layer._tileZoom;
+  if (z == null) return;
+  for (const key in layer._tiles) {
+    const tile = layer._tiles[key];
+    if (!tile.el || !tile.coords) continue;
+    tile.el.style.visibility = tile.coords.z === z ? "" : "hidden";
+  }
+}
+
+function hideStaleFreeze() {
+  const el = map.getContainer().querySelector(".tile-freeze");
+  if (!el || snapTileZoom == null) return;
+  if (imageryLayer._tileZoom !== snapTileZoom) el.style.visibility = "hidden";
+}
+
 function snapshotTiles() {
   if (!showBase || map._animatingZoom) return;
   if (imageryLayer._loading) return;
   const pane = map.getPane("tilePane");
   if (!pane) return;
   const imgs = [...pane.querySelectorAll("img.leaflet-tile-loaded")].filter(
-    (img) => img.complete && img.naturalWidth
+    (img) => img.complete && img.naturalWidth && img.style.visibility !== "hidden"
   );
   if (imgs.length < 2) return;
   const canvas = freezeCanvas();
@@ -156,6 +173,8 @@ function snapshotTiles() {
     const r = img.getBoundingClientRect();
     ctx.drawImage(img, r.left - origin.left, r.top - origin.top, r.width, r.height);
   });
+  snapTileZoom = imageryLayer._tileZoom;
+  canvas.style.visibility = "";
 }
 
 function scheduleSnapshot() {
@@ -166,6 +185,7 @@ function scheduleSnapshot() {
 function patchKeepTiles(layer) {
   const prune = layer._pruneTiles.bind(layer);
   layer._pruneTiles = function () {
+    revealCurrentTiles(this);
     if (!this._map || this._map._animatingZoom) return;
     let current = 0;
     let loaded = 0;
@@ -183,26 +203,20 @@ function patchKeepTiles(layer) {
   };
 }
 BASE_LAYERS.forEach(patchKeepTiles);
+map.on("zoom move", () => {
+  hideStaleFreeze();
+  BASE_LAYERS.forEach(revealCurrentTiles);
+});
 map.on("zoomend moveend", scheduleSnapshot);
 imageryLayer.on("load", scheduleSnapshot);
 
-// Fast wheel bursts skip CSS zoom and GridLayer wipes tiles. Animate always,
-// ignore extra wheel while a zoom is already running, and cap each tick.
+// One wheel tick, one zoom step. No CSS scale, so tiles never blow up into squares.
 const _wheelZoom = map.scrollWheelZoom;
 const _performZoom = _wheelZoom._performZoom.bind(_wheelZoom);
 _wheelZoom._performZoom = function () {
-  if (map._animatingZoom) {
-    this._delta = 0;
-    this._startTime = null;
-    return;
-  }
-  const cap = map.options.wheelPxPerZoomLevel * 6;
+  const cap = map.options.wheelPxPerZoomLevel;
   this._delta = Math.max(-cap, Math.min(cap, this._delta));
   _performZoom();
-};
-const _setZoomAround = map.setZoomAround.bind(map);
-map.setZoomAround = function (latlng, zoom, options) {
-  return _setZoomAround(latlng, zoom, L.extend({ animate: true }, options));
 };
 
 function lerpColor(a, b, t) {
@@ -541,15 +555,10 @@ function hexBounds(hexes) {
   return bounds;
 }
 
-function placeOverlayCanvas(canvas) {
-  if (!canvas) return;
-  L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));
-}
-
 function setupCanvas() {
-  const pane = map.getPane("overlayPane");
-  roofCanvas = L.DomUtil.create("canvas", "roof-canvas", pane);
-  markCanvas = L.DomUtil.create("canvas", "roof-canvas", pane);
+  const host = map.getContainer();
+  roofCanvas = L.DomUtil.create("canvas", "roof-canvas", host);
+  markCanvas = L.DomUtil.create("canvas", "roof-canvas", host);
   roofCtx = roofCanvas.getContext("2d", { alpha: true });
   markCtx = markCanvas.getContext("2d", { alpha: true });
   roofCanvas.style.display = "none";
@@ -567,8 +576,12 @@ function setupCanvas() {
       drawRoofs(hitsNow);
     });
   };
+  map.on("zoom", () => {
+    if (view !== "roofs") return;
+    drawRoofs(false);
+  });
   map.on("move", () => {
-    if (view !== "roofs" || map._animatingZoom) return;
+    if (view !== "roofs" || map._zooming) return;
     scheduleDraw(false);
   });
   map.on("zoomend moveend resize viewreset", () => scheduleDraw(true));
@@ -659,8 +672,6 @@ function drawRoofs(rebuildHits = true) {
 
 function drawRoofsAt(center, zoom, rebuildHits = true) {
   if (view !== "roofs" || !roofCtx || !ROOFS) return;
-  placeOverlayCanvas(roofCanvas);
-  placeOverlayCanvas(markCanvas);
   const size = syncCanvas(roofCanvas, roofCtx);
   syncCanvas(markCanvas, markCtx);
   const r = pointRadius(zoom);
