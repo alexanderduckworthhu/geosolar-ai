@@ -365,8 +365,6 @@ body {
 }
 
 #map.no-base .leaflet-tile-pane,
-#map.no-base .leaflet-roads-pane,
-#map.no-base .leaflet-labels-pane,
 #map.no-base .tile-freeze {
   display: none !important;
 }

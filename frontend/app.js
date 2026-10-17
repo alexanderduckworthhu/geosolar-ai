@@ -15,7 +15,6 @@ let lastCityId = "zh";
 let floor = 1;
 let showBase = localStorage.getItem("geosolar-base") !== "off";
 let showBorders = localStorage.getItem("geosolar-borders") !== "off";
-let showLabels = localStorage.getItem("geosolar-labels") !== "off";
 let view = showBase ? "roofs" : "hex";
 let wantedView = null;
 let pendingCity = null;
@@ -92,18 +91,12 @@ const map = L.map("map", {
   maxBoundsViscosity: 0.7,
 }).setView([46.8, 8.23], 7);
 
-map.createPane("roads");
-map.getPane("roads").style.zIndex = 340;
-map.getPane("roads").style.pointerEvents = "none";
 map.createPane("roofs");
 map.getPane("roofs").style.zIndex = 450;
 map.getPane("roofs").style.pointerEvents = "none";
 map.createPane("borders");
 map.getPane("borders").style.zIndex = 480;
 map.getPane("borders").style.pointerEvents = "none";
-map.createPane("labels");
-map.getPane("labels").style.zIndex = 560;
-map.getPane("labels").style.pointerEvents = "none";
 
 const TILE_OPTS = {
   maxZoom: 19,
@@ -116,202 +109,8 @@ const imageryLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   TILE_OPTS
 );
-function isRoadPixel(r, g, b) {
-  // Peach road paint is much redder than its green. Cream street names are not.
-  return r - g > 30 && r - b > 55 && g - b > 12 && r > 90 && g > 60 && r - g < 130;
-}
-
-const TRANSPORT_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}";
-const transportCache = new Map();
-const transportPending = new Set();
-let transportQueue = [];
-let transportActive = 0;
-let transportFrame = 0;
-let roadCanvas = null;
-let roadCtx = null;
-let labelCanvas = null;
-let labelCtx = null;
-
-function transportKey(z, x, y) {
-  return `${z}/${x}/${y}`;
-}
-
-function splitTransport(img) {
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  const scratch = document.createElement("canvas");
-  scratch.width = w;
-  scratch.height = h;
-  const sctx = scratch.getContext("2d", { willReadFrequently: true });
-  sctx.drawImage(img, 0, 0);
-  const frame = sctx.getImageData(0, 0, w, h);
-  const d = frame.data;
-  const roads = sctx.createImageData(w, h);
-  const labels = sctx.createImageData(w, h);
-  const rd = roads.data;
-  const lb = labels.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const a = d[i + 3];
-    if (a < 8) continue;
-    if (isRoadPixel(d[i], d[i + 1], d[i + 2])) {
-      rd[i] = 70;
-      rd[i + 1] = 74;
-      rd[i + 2] = 72;
-      rd[i + 3] = Math.min(255, (a * 0.95) | 0);
-    } else {
-      lb[i] = d[i];
-      lb[i + 1] = d[i + 1];
-      lb[i + 2] = d[i + 2];
-      lb[i + 3] = a;
-    }
-  }
-  const roadsCanvas = document.createElement("canvas");
-  roadsCanvas.width = w;
-  roadsCanvas.height = h;
-  roadsCanvas.getContext("2d").putImageData(roads, 0, 0);
-  const labelsCanvas = document.createElement("canvas");
-  labelsCanvas.width = w;
-  labelsCanvas.height = h;
-  labelsCanvas.getContext("2d").putImageData(labels, 0, 0);
-  return { roads: roadsCanvas, labels: labelsCanvas };
-}
-
-function sourceZoom(zoom, maxZoom) {
-  const dpr = window.devicePixelRatio || 1;
-  let z = Math.ceil(zoom + Math.log2(Math.max(1, dpr)) - 1e-6);
-  while (z > Math.ceil(zoom) && 256 * 2 ** (zoom - z) < 96) z -= 1;
-  return Math.max(0, Math.min(maxZoom, z));
-}
-
-function trimTransportCache() {
-  while (transportCache.size > 140) {
-    const oldest = transportCache.keys().next().value;
-    transportCache.delete(oldest);
-  }
-}
-
-function pumpTransport() {
-  const labelZ = labelCanvas ? sourceZoom(map.getZoom(), 19) : -1;
-  const roadZ = roadCanvas ? sourceZoom(map.getZoom(), 15) : -1;
-  transportQueue = transportQueue.filter((item) => item[0] === labelZ || item[0] === roadZ);
-  while (transportActive < 6 && transportQueue.length) {
-    const [z, x, y] = transportQueue.shift();
-    const key = transportKey(z, x, y);
-    if (transportCache.has(key)) {
-      transportPending.delete(key);
-      continue;
-    }
-    transportActive += 1;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      transportActive -= 1;
-      transportPending.delete(key);
-      try {
-        transportCache.set(key, splitTransport(img));
-        trimTransportCache();
-      } catch (_) {
-        /* leave the hole rather than drawing the raw tile */
-      }
-      scheduleTransport();
-      pumpTransport();
-    };
-    img.onerror = () => {
-      transportActive -= 1;
-      transportPending.delete(key);
-      pumpTransport();
-    };
-    img.src = TRANSPORT_URL.replace("{z}", z).replace("{y}", y).replace("{x}", x);
-  }
-}
-
-function requestTransport(list) {
-  const center = list.length / 2;
-  list
-    .map((item, i) => ({ item, i }))
-    .sort((a, b) => Math.abs(a.i - center) - Math.abs(b.i - center))
-    .forEach(({ item }) => {
-      const key = transportKey(item[0], item[1], item[2]);
-      if (transportCache.has(key) || transportPending.has(key)) return;
-      transportPending.add(key);
-      transportQueue.push(item);
-    });
-  pumpTransport();
-}
-
-function paintTransportLevel(ctx, zoom, srcZ, pick) {
-  const size = map.getSize();
-  const origin = map.project(map.getCenter(), zoom);
-  const dest = 256 * 2 ** (zoom - srcZ);
-  const toSrc = 2 ** (srcZ - zoom);
-  const n = 2 ** srcZ;
-  const minX = (origin.x - size.x / 2) * toSrc;
-  const minY = (origin.y - size.y / 2) * toSrc;
-  const maxX = (origin.x + size.x / 2) * toSrc;
-  const maxY = (origin.y + size.y / 2) * toSrc;
-  const x0 = Math.max(0, Math.floor(minX / 256) - 1);
-  const y0 = Math.max(0, Math.floor(minY / 256) - 1);
-  const x1 = Math.min(n - 1, Math.floor(maxX / 256) + 1);
-  const y1 = Math.min(n - 1, Math.floor(maxY / 256) + 1);
-  const dpr = window.devicePixelRatio || 1;
-  const snap = (v) => Math.round(v * dpr) / dpr;
-  const perDevice = toSrc / dpr;
-  ctx.imageSmoothingEnabled = perDevice < 0.92 || perDevice > 1.08;
-  ctx.imageSmoothingQuality = "high";
-  const missing = [];
-  for (let ty = y0; ty <= y1; ty++) {
-    for (let tx = x0; tx <= x1; tx++) {
-      const hit = transportCache.get(transportKey(srcZ, tx, ty));
-      const xA = snap(tx * dest - origin.x + size.x / 2);
-      const yA = snap(ty * dest - origin.y + size.y / 2);
-      const xB = snap((tx + 1) * dest - origin.x + size.x / 2);
-      const yB = snap((ty + 1) * dest - origin.y + size.y / 2);
-      if (!hit) {
-        missing.push([srcZ, tx, ty]);
-        continue;
-      }
-      ctx.drawImage(hit[pick], xA, yA, xB - xA, yB - yA);
-    }
-  }
-  return missing;
-}
-
-function drawTransport() {
-  if (!showBase || !roadCtx || !labelCtx) return;
-  placeOverlayCanvas(roadCanvas);
-  placeOverlayCanvas(labelCanvas);
-  syncCanvas(roadCanvas, roadCtx);
-  syncCanvas(labelCanvas, labelCtx);
-  const zoom = map.getZoom();
-  const roadZ = sourceZoom(zoom, 15);
-  const labelZ = sourceZoom(zoom, 19);
-  const missing = paintTransportLevel(roadCtx, zoom, roadZ, "roads");
-  if (showLabels) missing.push(...paintTransportLevel(labelCtx, zoom, labelZ, "labels"));
-  if (missing.length) requestTransport(missing);
-}
-
-function scheduleTransport() {
-  if (transportFrame) return;
-  transportFrame = requestAnimationFrame(() => {
-    transportFrame = 0;
-    drawTransport();
-  });
-}
-
-roadCanvas = L.DomUtil.create("canvas", "roof-canvas", map.getPane("roads"));
-labelCanvas = L.DomUtil.create("canvas", "roof-canvas", map.getPane("labels"));
-roadCtx = roadCanvas.getContext("2d");
-labelCtx = labelCanvas.getContext("2d");
-map.on("zoom", drawTransport);
-map.on("move", () => {
-  if (!map._zooming) scheduleTransport();
-});
-map.on("zoomend moveend resize viewreset", scheduleTransport);
-map.whenReady(scheduleTransport);
-
 const BASE_LAYERS = [imageryLayer];
-if (showBase) BASE_LAYERS.forEach((lyr) => lyr.addTo(map));
+if (showBase) imageryLayer.addTo(map);
 map.getPane("mapPane").style.zIndex = 2;
 
 function freezeCanvas() {
@@ -1192,12 +991,6 @@ function applyLang() {
   $("btn-base-off").textContent = i.mapOff;
   if ($("btn-borders-on")) $("btn-borders-on").textContent = i.bordersOn;
   if ($("btn-borders-off")) $("btn-borders-off").textContent = i.bordersOff;
-  if ($("btn-labels-on")) {
-    $("btn-labels-on").textContent = i.namesOn;
-    $("btn-labels-on").title = i.namesHint;
-    $("btn-labels-off").textContent = i.namesOff;
-    $("btn-labels-off").title = i.namesHint;
-  }
   $("lbl-floor").textContent = i.classFloor;
   if ($("lbl-zoom")) $("lbl-zoom").textContent = i.zoom;
   if ($("btn-zoom-out")) $("btn-zoom-out").textContent = i.zoomOut;
@@ -1241,12 +1034,7 @@ function setBase(on) {
     }
   });
   const tilePane = map.getPane("tilePane");
-  const roadsPane = map.getPane("roads");
-  const labelPane = map.getPane("labels");
   if (tilePane) tilePane.style.display = showBase ? "" : "none";
-  if (roadsPane) roadsPane.style.display = showBase ? "" : "none";
-  if (labelPane) labelPane.style.display = showBase && showLabels ? "" : "none";
-  if (showBase) scheduleTransport();
   if (turningOn) {
     setViewMode("roofs");
     return;
@@ -1263,22 +1051,6 @@ function styleBorder(feature) {
     fill: false,
     interactive: false,
   };
-}
-
-function applyLabelVisibility() {
-  const labelPane = map.getPane("labels");
-  if (labelPane) labelPane.style.display = showBase && showLabels ? "" : "none";
-}
-
-function setLabels(on) {
-  showLabels = Boolean(on);
-  localStorage.setItem("geosolar-labels", showLabels ? "on" : "off");
-  $("btn-labels-on").classList.toggle("on", showLabels);
-  $("btn-labels-off").classList.toggle("on", !showLabels);
-  applyLabelVisibility();
-  if (view === "roofs") drawMarks();
-  if (showLabels && showBase) scheduleTransport();
-  else if (labelCtx) syncCanvas(labelCanvas, labelCtx);
 }
 
 function setBorders(on) {
@@ -1854,9 +1626,6 @@ async function init() {
   document.querySelectorAll("#border-row button").forEach((b) => {
     b.addEventListener("click", () => setBorders(b.dataset.borders === "on"));
   });
-  document.querySelectorAll("#label-row button").forEach((b) => {
-    b.addEventListener("click", () => setLabels(b.dataset.labels === "on"));
-  });
   document.querySelectorAll("#langs button").forEach((b) => {
     b.addEventListener("click", () => setLang(b.dataset.lang));
   });
@@ -1927,7 +1696,6 @@ async function init() {
   addCityLabels();
   setBase(showBase);
   setBorders(showBorders);
-  setLabels(showLabels);
   paintFloorLabel();
   setLoadStatus(wantedView === "roofs" ? t().loadRoofs : "");
   requestAnimationFrame(async () => {
@@ -1969,7 +1737,6 @@ window.GeoSolar = {
   map,
   setBase,
   setBorders,
-  setLabels,
   setSheet,
   zoomToPct,
   zoomOutFull,
