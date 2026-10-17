@@ -364,11 +364,6 @@ body {
   transition: none;
 }
 
-.leaflet-roads-pane {
-  filter: grayscale(1) invert(1) brightness(0.72) contrast(1.35);
-  mix-blend-mode: multiply;
-}
-
 #map.no-base .leaflet-tile-pane,
 #map.no-base .leaflet-roads-pane,
 #map.no-base .leaflet-labels-pane,
@@ -380,7 +375,6 @@ body {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 450;
   pointer-events: none;
   transform-origin: 0 0;
 }
