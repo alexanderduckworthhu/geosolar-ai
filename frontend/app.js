@@ -124,27 +124,53 @@ function freezeCanvas() {
 }
 
 let snapTimer = 0;
-let snapTileZoom = null;
+let snapState = null;
+
+function tileCoverage(layer) {
+  const z = layer._tileZoom;
+  let current = 0;
+  let loaded = 0;
+  if (z == null) return { z, current, loaded, ready: false };
+  for (const key in layer._tiles) {
+    const tile = layer._tiles[key];
+    if (!tile.current || !tile.coords || tile.coords.z !== z) continue;
+    current += 1;
+    if (tile.loaded) loaded += 1;
+  }
+  return { z, current, loaded, ready: current > 0 && loaded >= current };
+}
 
 function revealCurrentTiles(layer) {
-  const z = layer._tileZoom;
-  if (z == null) return;
+  const cover = tileCoverage(layer);
+  if (cover.z == null) return;
   for (const key in layer._tiles) {
     const tile = layer._tiles[key];
     if (!tile.el || !tile.coords) continue;
-    tile.el.style.visibility = tile.coords.z === z ? "" : "hidden";
+    const dz = Math.abs(tile.coords.z - cover.z);
+    const show = tile.coords.z === cover.z || (!cover.ready && dz === 1);
+    tile.el.style.visibility = show ? "" : "hidden";
   }
 }
 
-function hideStaleFreeze() {
+function placeFreeze() {
   const el = map.getContainer().querySelector(".tile-freeze");
-  if (!el || snapTileZoom == null) return;
-  if (imageryLayer._tileZoom !== snapTileZoom) el.style.visibility = "hidden";
+  if (!el || !snapState) return;
+  const scale = map.getZoomScale(map.getZoom(), snapState.zoom);
+  el.style.transformOrigin = "0 0";
+  if (scale < 1) {
+    // Zooming out would shrink the snapshot and expose the dark map background.
+    // Keep the last frame full-bleed until the wider tiles paint.
+    el.style.transform = "none";
+  } else {
+    const p = map.latLngToContainerPoint(snapState.center);
+    el.style.transform = `translate(${p.x}px, ${p.y}px) scale(${scale}) translate(${-snapState.width / 2}px, ${-snapState.height / 2}px)`;
+  }
+  el.style.visibility = "";
 }
 
 function snapshotTiles() {
   if (!showBase || map._animatingZoom) return;
-  if (imageryLayer._loading) return;
+  if (!tileCoverage(imageryLayer).ready) return;
   const pane = map.getPane("tilePane");
   if (!pane) return;
   const imgs = [...pane.querySelectorAll("img.leaflet-tile-loaded")].filter(
@@ -166,38 +192,44 @@ function snapshotTiles() {
     const r = img.getBoundingClientRect();
     ctx.drawImage(img, r.left - origin.left, r.top - origin.top, r.width, r.height);
   });
-  snapTileZoom = imageryLayer._tileZoom;
-  canvas.style.visibility = "";
+  snapState = {
+    zoom: map.getZoom(),
+    center: map.getCenter(),
+    width: size.x,
+    height: size.y,
+  };
+  placeFreeze();
 }
 
 function scheduleSnapshot() {
   clearTimeout(snapTimer);
-  snapTimer = setTimeout(snapshotTiles, 220);
+  snapTimer = setTimeout(snapshotTiles, 80);
 }
 
 function patchKeepTiles(layer) {
   const prune = layer._pruneTiles.bind(layer);
   layer._pruneTiles = function () {
     revealCurrentTiles(this);
-    if (!this._map || this._map._animatingZoom) return;
-    let current = 0;
-    let loaded = 0;
-    for (const key in this._tiles) {
-      const tile = this._tiles[key];
-      if (!tile.current) continue;
-      current += 1;
-      if (tile.loaded) loaded += 1;
-    }
-    if (current > 2 && loaded < current * 0.45) {
-      this.once("load", () => prune());
+    if (!this._map) return;
+    if (!tileCoverage(this).ready) {
+      if (!this._pruneWait) {
+        this._pruneWait = true;
+        this.once("load", () => {
+          this._pruneWait = false;
+          revealCurrentTiles(this);
+          prune();
+          scheduleSnapshot();
+        });
+      }
       return;
     }
+    this._pruneWait = false;
     prune();
   };
 }
 BASE_LAYERS.forEach(patchKeepTiles);
 map.on("zoom move", () => {
-  hideStaleFreeze();
+  placeFreeze();
   BASE_LAYERS.forEach(revealCurrentTiles);
 });
 map.on("zoomend moveend", scheduleSnapshot);
