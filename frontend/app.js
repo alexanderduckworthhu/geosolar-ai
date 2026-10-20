@@ -300,32 +300,11 @@ function cityById(id) {
   return DATA.cities.find((c) => c.id === id);
 }
 
-function pointInRing(lon, lat, ring) {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0];
-    const yi = ring[i][1];
-    const xj = ring[j][0];
-    const yj = ring[j][1];
-    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
-}
-
 function inCity(lat, lon, city) {
   if (city.id === "ch") return true;
-  if (!city.parts) {
-    const dlat = (lat - city.lat) * 111;
-    const dlon = (lon - city.lon) * 111 * Math.cos((city.lat * Math.PI) / 180);
-    return Math.hypot(dlat, dlon) <= city.radius_km;
-  }
-  if (lat < city.south || lat > city.north || lon < city.west || lon > city.east) return false;
-  for (const part of city.parts) {
-    if (!pointInRing(lon, lat, part.o)) continue;
-    if (part.h && part.h.some((hole) => pointInRing(lon, lat, hole))) continue;
-    return true;
-  }
-  return false;
+  const dlat = (lat - city.lat) * 111;
+  const dlon = (lon - city.lon) * 111 * Math.cos((city.lat * Math.PI) / 180);
+  return Math.hypot(dlat, dlon) <= city.radius_km;
 }
 
 function hexInCity(hex, city) {
@@ -843,22 +822,44 @@ function showRoofCanvases() {
   if (markCanvas) markCanvas.style.visibility = "";
 }
 
-function cityBounds(city) {
-  if (!city || city.south == null) return null;
-  return L.latLngBounds([
-    [city.south, city.west],
-    [city.north, city.east],
-  ]);
+let cityCircle = null;
+
+function cityCircleBounds(city) {
+  if (!city || !city.radius_km) return null;
+  const dlat = city.radius_km / 111;
+  const dlon = city.radius_km / (111 * Math.cos((city.lat * Math.PI) / 180));
+  return L.latLngBounds(
+    [city.lat - dlat, city.lon - dlon],
+    [city.lat + dlat, city.lon + dlon]
+  );
+}
+
+function syncCityCircle() {
+  if (cityCircle) {
+    map.removeLayer(cityCircle);
+    cityCircle = null;
+  }
+  const city = cityById(cityId);
+  if (!city || city.id === "ch" || !city.radius_km) return;
+  cityCircle = L.circle([city.lat, city.lon], {
+    radius: city.radius_km * 1000,
+    pane: "borders",
+    color: "#f3eadc",
+    weight: 1.75,
+    opacity: 0.92,
+    fill: false,
+    interactive: false,
+  }).addTo(map);
 }
 
 function frameCity(city) {
-  const bounds = cityBounds(city);
   const jump = { animate: false, reset: true };
+  const bounds = cityCircleBounds(city);
   if (!bounds) {
     map.setView([city.lat, city.lon], ZOOM_CITY_ROOFS, jump);
     return;
   }
-  map.fitBounds(bounds, { padding: [64, 64], maxZoom: 16, ...jump });
+  map.fitBounds(bounds, { padding: [36, 36], maxZoom: 16, ...jump });
 }
 
 function fitView() {
@@ -868,28 +869,26 @@ function fitView() {
   // reset:true skips CSS-scaling satellite tiles across a large jump
   // (the bright blob in the middle of the map).
   const jump = { animate: false, reset: true };
-  if (view === "roofs") {
-    if (cityId === "ch") {
-      map.fitBounds(CH_BOUNDS, { padding: [28, 28], maxZoom: ZOOM_OUT, ...jump });
-    } else {
-      const city = cityById(cityId);
-      frameCity(city);
-    }
-  } else if (cityId === "ch") {
+  syncCityCircle();
+  if (cityId === "ch") {
     map.fitBounds(CH_BOUNDS, { padding: [28, 28], maxZoom: ZOOM_OUT, ...jump });
+  } else if (view === "roofs") {
+    frameCity(cityById(cityId));
   } else {
     const vis = visibleHexes();
-    if (!vis.length) return;
-    map.fitBounds(hexBounds(vis), { padding: [52, 52], maxZoom: ZOOM_CITY_HEX, ...jump });
+    const bounds = cityCircleBounds(cityById(cityId));
+    if (bounds) map.fitBounds(bounds, { padding: [36, 36], maxZoom: ZOOM_CITY_HEX, ...jump });
+    else if (vis.length) map.fitBounds(hexBounds(vis), { padding: [52, 52], maxZoom: ZOOM_CITY_HEX, ...jump });
   }
   syncZoomUi();
 }
 
 function zoomInLevel() {
-  if (view === "roofs" && cityId !== "ch") {
-    const bounds = cityBounds(cityById(cityId));
+  if (cityId !== "ch") {
+    const bounds = cityCircleBounds(cityById(cityId));
     if (bounds && map.getSize().x > 0) {
-      return Math.min(16, map.getBoundsZoom(bounds, false, L.point(64, 64)));
+      const cap = view === "roofs" ? 16 : ZOOM_CITY_HEX;
+      return Math.min(cap, map.getBoundsZoom(bounds, false, L.point(36, 36)));
     }
   }
   return view === "roofs" ? ZOOM_CITY_ROOFS : ZOOM_CITY_HEX;
@@ -923,11 +922,12 @@ function zoomToPct(pct) {
     });
   } else if (cityId !== "ch") {
     const city = cityById(cityId);
-    const bounds = cityBounds(city);
-    if (t >= 0.999 && view === "roofs" && bounds) {
-      map.fitBounds(bounds, { padding: [64, 64], maxZoom: 16, animate: false, reset: true });
+    const bounds = cityCircleBounds(city);
+    if (t >= 0.999 && bounds) {
+      const cap = view === "roofs" ? 16 : ZOOM_CITY_HEX;
+      map.fitBounds(bounds, { padding: [36, 36], maxZoom: cap, animate: false, reset: true });
     } else {
-      const target = bounds ? bounds.getCenter() : L.latLng(city.lat, city.lon);
+      const target = L.latLng(city.lat, city.lon);
       const ch = L.latLngBounds(CH_BOUNDS).getCenter();
       const center = L.latLng(
         ch.lat + (target.lat - ch.lat) * t,
@@ -1674,7 +1674,7 @@ async function init() {
   setLoadStatus(t().loadHex);
   const roofsPromise = fetch("data/roofs.json").then((r) => r.json());
   const [hexPayload, borderPayload] = await Promise.all([
-    fetch("data/hexes.json?v=4").then((r) => r.json()),
+    fetch("data/hexes.json?v=5").then((r) => r.json()),
     fetch("data/borders.json").then((r) => r.json()),
   ]);
   DATA = hexPayload;
