@@ -46,22 +46,22 @@ CHUNK = 250_000
 
 CITIES = [
     {"id": "ch", "name": "Switzerland", "lon": 8.23, "lat": 46.80, "radius_km": 175},
-    {"id": "zh", "name": "Zürich", "lon": 8.5417, "lat": 47.3769, "radius_km": 14},
-    {"id": "ge", "name": "Genève", "lon": 6.1432, "lat": 46.2044, "radius_km": 12},
-    {"id": "bs", "name": "Basel", "lon": 7.5886, "lat": 47.5596, "radius_km": 11},
-    {"id": "ls", "name": "Lausanne", "lon": 6.6323, "lat": 46.5197, "radius_km": 11},
-    {"id": "be", "name": "Bern", "lon": 7.4474, "lat": 46.9480, "radius_km": 12},
-    {"id": "wi", "name": "Winterthur", "lon": 8.7376, "lat": 47.4988, "radius_km": 12},
-    {"id": "lu", "name": "Luzern", "lon": 8.3093, "lat": 47.0502, "radius_km": 12},
-    {"id": "sg", "name": "St. Gallen", "lon": 9.3762, "lat": 47.4245, "radius_km": 12},
-    {"id": "ti", "name": "Lugano", "lon": 8.9511, "lat": 46.0101, "radius_km": 12},
-    {"id": "bi", "name": "Biel/Bienne", "lon": 7.2467, "lat": 47.1368, "radius_km": 11},
-    {"id": "th", "name": "Thun", "lon": 7.6280, "lat": 46.7580, "radius_km": 11},
-    {"id": "fr", "name": "Fribourg", "lon": 7.1608, "lat": 46.8064, "radius_km": 11},
-    {"id": "sh", "name": "Schaffhausen", "lon": 8.6349, "lat": 47.6960, "radius_km": 11},
-    {"id": "gr", "name": "Chur", "lon": 9.5329, "lat": 46.8499, "radius_km": 12},
-    {"id": "ne", "name": "Neuchâtel", "lon": 6.9310, "lat": 46.9929, "radius_km": 11},
-    {"id": "vs", "name": "Sion", "lon": 7.3606, "lat": 46.2331, "radius_km": 14},
+    {"id": "zh", "name": "Zürich", "lon": 8.5417, "lat": 47.3769, "bfs": 261},
+    {"id": "ge", "name": "Genève", "lon": 6.1432, "lat": 46.2044, "bfs": 6621},
+    {"id": "bs", "name": "Basel", "lon": 7.5886, "lat": 47.5596, "bfs": 2701},
+    {"id": "ls", "name": "Lausanne", "lon": 6.6323, "lat": 46.5197, "bfs": 5586},
+    {"id": "be", "name": "Bern", "lon": 7.4474, "lat": 46.9480, "bfs": 351},
+    {"id": "wi", "name": "Winterthur", "lon": 8.7376, "lat": 47.4988, "bfs": 230},
+    {"id": "lu", "name": "Luzern", "lon": 8.3093, "lat": 47.0502, "bfs": 1061},
+    {"id": "sg", "name": "St. Gallen", "lon": 9.3762, "lat": 47.4245, "bfs": 3203},
+    {"id": "ti", "name": "Lugano", "lon": 8.9511, "lat": 46.0101, "bfs": 5192},
+    {"id": "bi", "name": "Biel/Bienne", "lon": 7.2467, "lat": 47.1368, "bfs": 371},
+    {"id": "th", "name": "Thun", "lon": 7.6280, "lat": 46.7580, "bfs": 942},
+    {"id": "fr", "name": "Fribourg", "lon": 7.1608, "lat": 46.8064, "bfs": 2196},
+    {"id": "sh", "name": "Schaffhausen", "lon": 8.6349, "lat": 47.6960, "bfs": 2939},
+    {"id": "gr", "name": "Chur", "lon": 9.5329, "lat": 46.8499, "bfs": 3901},
+    {"id": "ne", "name": "Neuchâtel", "lon": 6.9310, "lat": 46.9929, "bfs": 6458},
+    {"id": "vs", "name": "Sion", "lon": 7.3606, "lat": 46.2331, "bfs": 6266},
 ]
 
 
@@ -135,6 +135,71 @@ def ring_wgs(geom) -> list[list[float]] | None:
     if coords[0] != coords[-1]:
         coords.append(coords[0])
     return coords
+
+
+def _ll_ring(ring) -> list[list[float]]:
+    coords = [[round(lon, 5), round(lat, 5)] for lon, lat in (TO_LL.transform(x, y) for x, y in ring.coords)]
+    if coords[0] != coords[-1]:
+        coords.append(coords[0])
+    return coords
+
+
+def city_records() -> list[dict]:
+    """City buttons use the municipality outline, not a circle around downtown."""
+    meta, geometry, arrays = unpack_read(
+        raw.read(
+            BOUND_VSI,
+            layer="tlm_hoheitsgebiet",
+            columns=["bfs_nummer", "icc"],
+            read_geometry=True,
+        )
+    )
+    names = list(meta["fields"])
+    bfs = arrays[names.index("bfs_nummer")]
+    icc = arrays[names.index("icc")]
+    by_bfs = {}
+    for i, num in enumerate(bfs):
+        if str(icc[i]) != "CH":
+            continue
+        by_bfs[int(num)] = from_wkb(geometry[i])
+    records = []
+    for city in CITIES:
+        if "bfs" not in city:
+            records.append(city)
+            continue
+        geom = by_bfs[city["bfs"]]
+        if geom.has_z:
+            geom = shp_transform(lambda x, y, z=None: (x, y), geom)
+        geom = geom.simplify(50.0, preserve_topology=True)
+        parts_src = list(geom.geoms) if geom.geom_type == "MultiPolygon" else [geom]
+        parts = []
+        west, south, east, north = 180.0, 90.0, -180.0, -90.0
+        for part in parts_src:
+            if part.is_empty or part.area < 1e5:
+                continue
+            outer = _ll_ring(part.exterior)
+            holes = [_ll_ring(hole) for hole in part.interiors]
+            item = {"o": outer}
+            if holes:
+                item["h"] = holes
+            parts.append(item)
+            for lon, lat in outer:
+                west, south = min(west, lon), min(south, lat)
+                east, north = max(east, lon), max(north, lat)
+        records.append(
+            {
+                "id": city["id"],
+                "name": city["name"],
+                "lon": city["lon"],
+                "lat": city["lat"],
+                "south": round(south, 5),
+                "west": round(west, 5),
+                "north": round(north, 5),
+                "east": round(east, 5),
+                "parts": parts,
+            }
+        )
+    return records
 
 
 def load_switzerland():
@@ -307,7 +372,7 @@ def main() -> None:
         "n_sample": n_sample,
         "n_hexes": len(hexes),
         "national": pack_national(national),
-        "cities": CITIES,
+        "cities": city_records(),
         "hexes": hexes,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -315,5 +380,15 @@ def main() -> None:
     print("wrote", OUT, "hexes", len(hexes), "source", source, "bytes", OUT.stat().st_size)
 
 
+def patch_cities() -> None:
+    payload = json.loads(OUT.read_text())
+    payload["cities"] = city_records()
+    OUT.write_text(json.dumps(payload, separators=(",", ":")))
+    print("patched cities in", OUT, "bytes", OUT.stat().st_size)
+
+
 if __name__ == "__main__":
-    main()
+    if "--cities-only" in sys.argv:
+        patch_cities()
+    else:
+        main()
