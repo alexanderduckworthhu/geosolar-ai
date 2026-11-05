@@ -613,12 +613,11 @@ function applyAction(action) {
 }
 
 const MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
-const ASK_SYSTEM = `You are the assistant inside GeoSolar AI, a map of Swiss roofs coloured by the official class from 1 (low) to 5 (excellent).
-The user message has a language, a question, and facts from the map.
-Answer that question in that language, in plain sentences. No JSON, no braces, no code.
-Every number you write must already appear in the facts. roofs is a count of roofs, not people. percent_class_4_and_5 is the share in class 4 and class 5 together, not class 5 alone. mean_class is the average class from 1 to 5. mean_slope_degrees is the roof slope. Never mention kWh.
-A short or simplified question gets one sentence with the percent and the mean class. A full question can use the other numbers.
-If the question is not about this map, its roofs, its classes, its cities, or its controls, say it is outside this map.`;
+const ASK_SYSTEM = `You answer questions about the GeoSolar AI map of Swiss roofs. Every place named in the facts is on this map.
+Reply in the requested language, in one or two plain sentences. No JSON and no code.
+Copy every number exactly and keep it with the city it belongs to. roofs means roofs, not people. The percent is class 4 and class 5 together. mean class runs from 1 to 5. slope is degrees. Never mention kWh.
+When the question is marked short, use only the percent and the mean class.
+If the question is a joke or not about this map, reply only that it is outside this map.`;
 
 let enginePromise = null;
 let onEngineProgress = null;
@@ -657,6 +656,36 @@ function commandFromQuestion(text) {
   if (/\b(show satellite|satellite on|mit karte)\b/.test(lower)) return { type: "setBase", value: true };
   if (/\b(locate me|my location|mein standort|ma position|la mia posizione)\b/.test(lower)) return { type: "locate" };
   return null;
+}
+
+function factsText() {
+  const facts = packFacts();
+  const line = (name, row) =>
+    row
+      ? `${name}: ${row.roofs} roofs, mean class ${row.mean_class}, ${row.percent_class_4_and_5}% class 4 or 5, slope ${row.mean_slope_degrees} degrees`
+      : "";
+  const cities = facts.cities || [];
+  const ranked = (key) => cities.slice().sort((a, b) => b[key] - a[key]);
+  const slope = ranked("mean_slope_degrees");
+  const share = ranked("percent_class_4_and_5");
+  const roofs = ranked("roofs");
+  const ends = (list, key, unit) =>
+    list.length ? `${list[0].name} ${list[0][key]}${unit}. ${list[list.length - 1].name} ${list[list.length - 1][key]}${unit}.` : "";
+  const summary = cities.length
+    ? `Highest then lowest class 4 or 5 share: ${ends(share, "percent_class_4_and_5", "%")} Steepest then flattest slope: ${ends(slope, "mean_slope_degrees", " degrees")} Most then fewest roofs: ${ends(roofs, "roofs", "")}`
+    : "";
+  const pin = facts.pin ? `Pinned ${facts.pin.kind}: ${JSON.stringify(facts.pin)}` : "";
+  return [
+    `Now showing ${facts.place}, view ${facts.view}.`,
+    "Hex cells are 2.4 km and count the full cadastre. The roof view draws a sample of 100000 roofs. A city is a circle around its centre. Class 1 is low and class 5 is excellent.",
+    summary,
+    line("This view", facts.here),
+    line("Switzerland", facts.national),
+    ...cities.map((city) => line(`${city.name} id ${city.id}`, city)),
+    pin,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function ensureEngine() {
@@ -698,11 +727,14 @@ async function askModel(text, pending) {
   onEngineProgress = null;
   pending.textContent = "…";
   const lang = (localStorage.getItem("geosolar-lang") || "en").slice(0, 2);
+  const short = /\b(simpl|short|brief|kurz|bref|breve|riassunt)\b/i.test(text)
+    ? "\nThis is a short question. Use only the percent and the mean class."
+    : "";
   const asked = {
     role: "user",
-    content: `Language: ${lang}\nQuestion: ${text}\nFacts: ${JSON.stringify(packFacts())}`,
+    content: `Language: ${lang}\nQuestion: ${text}\n${factsText()}${short}\nAnswer the question.`,
   };
-  const history = chatTurns.slice(-4);
+  const history = chatTurns.slice(-2);
   let reply = "";
   try {
     const completion = await engine.chat.completions.create({
