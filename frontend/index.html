@@ -34,7 +34,7 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=26" />
+    <link rel="stylesheet" href="styles.css?v=34" />
   </head>
   <body>
     <header class="top">
@@ -64,6 +64,34 @@
         <div id="map" role="application" aria-label="Switzerland solar map"></div>
         <p class="load-status" id="load-status" hidden></p>
         <p class="hint" id="hint"></p>
+        <button type="button" id="btn-chat" class="chat-toggle" aria-expanded="false" aria-controls="chat">
+          <svg class="icon-chat" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M5 6.4A2.4 2.4 0 0 1 7.4 4h9.2A2.4 2.4 0 0 1 19 6.4v6.7a2.4 2.4 0 0 1-2.4 2.4H12l-3.4 2.7c-.7.55-1.7.06-1.7-.8v-1.9H7.4A2.4 2.4 0 0 1 5 13.1V6.4Z"
+            />
+          </svg>
+          <svg class="icon-close" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4Z" />
+          </svg>
+        </button>
+        <section class="chat" id="chat" hidden>
+          <div class="chat-head">
+            <p class="chat-label" id="ask-label"></p>
+            <button type="button" id="chat-close">×</button>
+          </div>
+          <div class="chat-log" id="chat-log" role="log" aria-live="polite"></div>
+          <form class="ask" id="ask-form">
+            <div class="ask-row">
+              <input id="ask-input" type="text" autocomplete="off" />
+              <button type="submit" id="ask-go" aria-label="Send">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M4 12.2 19.2 4.8c.7-.3 1.4.4 1.1 1.1L13.6 20c-.3.8-1.4.7-1.6-.1l-1.6-6.1-6.1-1.6c-.8-.2-.9-1.3-.3-1.6Z" />
+                </svg>
+              </button>
+            </div>
+          </form>
+        </section>
       </div>
       <form class="search" id="search" autocomplete="off">
         <label class="sr-only" id="lbl-search" for="search-input"></label>
@@ -173,7 +201,8 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script src="i18n.js?v=15"></script>
-    <script src="app.js?v=45"></script>
+    <script src="i18n.js?v=29"></script>
+    <script src="app.js?v=52"></script>
+    <script src="ai.js?v=19"></script>
   </body>
 </html>

@@ -384,6 +384,54 @@ function aggregateRoofs(ids) {
   };
 }
 
+let cityStatCache = null;
+
+function cityStats() {
+  if (!DATA) return [];
+  if (cityStatCache) return cityStatCache;
+  cityStatCache = DATA.cities
+    .filter((c) => c.id !== "ch")
+    .map((c) => {
+      const hexes = DATA.hexes.filter((h) => hexInCity(h, c));
+      return { id: c.id, name: c.name, hexes: hexes.length, ...aggregate(hexes) };
+    });
+  return cityStatCache;
+}
+
+function mapSnapshot() {
+  const city = cityById(cityId);
+  const i = t();
+  let pin = null;
+  if (pinned && pinned.i != null) {
+    pin = {
+      kind: "roof",
+      klasse: pinned.klasse,
+      area: pinned.mean_area,
+      slope: pinned.mean_slope,
+      aspect: pinned.mean_aspect,
+    };
+  } else if (pinned && pinned.q != null) {
+    pin = {
+      kind: "hex",
+      n: pinned.n,
+      pct4: pinned.pct4,
+      mean: pinned.mean_klasse,
+      slope: pinned.mean_slope,
+    };
+  }
+  const vis = visibleHexes();
+  const stats = view === "roofs" && ROOFS ? aggregateRoofs(visRoofIds) : aggregate(vis);
+  return {
+    view,
+    cityId: city.id,
+    cityName: city.id === "ch" ? i.switzerland : city.name,
+    national: DATA ? DATA.national : null,
+    pin,
+    stats,
+    nHex: vis.length,
+  };
+}
+
 function roofRecord(i) {
   const k = ROOFS.k[i];
   const counts = [0, 0, 0, 0, 0];
@@ -462,7 +510,12 @@ function insightRoof(r) {
   return i.insightRoof(r.klasse, i.classes[r.klasse - 1], r.mean_slope, r.mean_aspect, fmt1(r.mean_area, 1));
 }
 
+function notifyRoof(record) {
+  document.dispatchEvent(new CustomEvent("geosolar-roof", { detail: record || null }));
+}
+
 function showDefault() {
+  notifyRoof(null);
   const i = t();
   const city = cityById(cityId);
   const title = city.id === "ch" ? (view === "roofs" ? i.allRoofs : i.switzerland) : city.name;
@@ -478,6 +531,7 @@ function showDefault() {
 }
 
 function showHex(hex, pinnedHex) {
+  notifyRoof(null);
   const i = t();
   const kicker = pinnedHex ? i.pinnedHex : i.preview;
   const title = `${hex.lat.toFixed(3)}°N  ${hex.lon.toFixed(3)}°E`;
@@ -501,6 +555,7 @@ function showRoof(r, pinnedRoof) {
     i.subRoofPin(fmt1(r.mean_area, 1), r.mean_slope, r.mean_aspect),
     insightRoof(r)
   );
+  notifyRoof(pinnedRoof ? r : null);
 }
 
 function styleHex(hex) {
@@ -1824,6 +1879,10 @@ window.GeoSolar = {
   zoomToPct,
   zoomOutFull,
   zoomInCity,
+  drawMarks,
+  cityStats,
+  mapSnapshot,
+  getView: () => view,
   setFloor: (n) => {
     floor = Number(n);
     $("class-floor").value = String(n);
