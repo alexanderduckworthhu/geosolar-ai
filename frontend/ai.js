@@ -613,41 +613,50 @@ function applyAction(action) {
 }
 
 const MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
-const ASK_SYSTEM = `You are the assistant inside GeoSolar AI, a map of Swiss roofs and their official Sonnendach class from 1 (low) to 5 (excellent).
-The user message is JSON with lang, question, and facts.
-Write reply in the language of lang: en, de, fr, or it.
-Answer the question. Every number you write must already appear in facts. Never mention kWh.
-roofs is a count of roofs, not people. mean_class is the average class from 1 to 5. percent_class_4_and_5 is the share of roofs in class 4 or 5 together, not class 5 alone. mean_slope_degrees is the average roof slope.
-A simplified or short question uses only percent_class_4_and_5 and mean_class, in one sentence. A full stats question can use every field.
-If the question is not about this map, its roofs, its classes, its cities, or its controls, say it is outside this map.
-If the user asks to open, show, or go to a city, set action to {"type":"goCity","id":"..."} using that city's id from facts.cities. Otherwise action is null.
-Other actions, only when asked: {"type":"setFloor","value":1 to 5}, {"type":"setView","value":"hex" or "roofs"}, {"type":"setBase","value":true or false}, {"type":"setBorders","value":true or false}, {"type":"setMode","value":"mean" or "pct4"}, {"type":"locate"}.
-Return one JSON object and nothing else: {"reply":"...","action":null}`;
+const ASK_SYSTEM = `You are the assistant inside GeoSolar AI, a map of Swiss roofs coloured by the official class from 1 (low) to 5 (excellent).
+The user message has a language, a question, and facts from the map.
+Answer that question in that language, in plain sentences. No JSON, no braces, no code.
+Every number you write must already appear in the facts. roofs is a count of roofs, not people. percent_class_4_and_5 is the share in class 4 and class 5 together, not class 5 alone. mean_class is the average class from 1 to 5. mean_slope_degrees is the roof slope. Never mention kWh.
+A short or simplified question gets one sentence with the percent and the mean class. A full question can use the other numbers.
+If the question is not about this map, its roofs, its classes, its cities, or its controls, say it is outside this map.`;
 
 let enginePromise = null;
 let onEngineProgress = null;
 const chatTurns = [];
 
-function parseModelText(content) {
+function plainReply(content) {
   let text = String(content || "").trim();
   if (text.startsWith("```")) text = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-  let parsed = null;
-  try {
-    parsed = JSON.parse(text);
-  } catch (_) {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        parsed = JSON.parse(text.slice(start, end + 1));
-      } catch (__) {
-        parsed = null;
-      }
+  if (text.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed.reply === "string") text = parsed.reply.trim();
+    } catch (_) {
+      text = "";
     }
   }
-  if (!parsed || typeof parsed !== "object") return { reply: text, action: null };
-  const reply = String(parsed.reply || "").trim();
-  return { reply: reply || text, action: parsed.action && typeof parsed.action === "object" ? parsed.action : null };
+  text = text.replace(/\{[^}]*\}/g, " ").replace(/\s+/g, " ").trim();
+  if (/setFloor|setView|setBase|goCity|setBorders|setMode|"action"/.test(text)) return "";
+  return text;
+}
+
+function commandFromQuestion(text) {
+  const lower = text.toLowerCase();
+  const cities = (window.GeoSolar && window.GeoSolar.cityStats && window.GeoSolar.cityStats()) || [];
+  if (/\b(open|show|go to|take me|offnen|ouvrir|apri|mostra)\b/.test(lower)) {
+    const named = cities.find((city) => lower.includes(city.name.toLowerCase()));
+    if (named) return { type: "goCity", id: named.id };
+  }
+  const floor = lower.match(/\b(?:floor|klasse|classe|classe)\s*(?:to|auf|a|à)?\s*([1-5])\b/);
+  if (floor) return { type: "setFloor", value: Number(floor[1]) };
+  if (/\b(switch to hex|hex view|show the hexes|wabenansicht)\b/.test(lower)) return { type: "setView", value: "hex" };
+  if (/\b(switch to roofs|roof view|each roof|show the roofs)\b/.test(lower)) return { type: "setView", value: "roofs" };
+  if (/\b(no borders|hide borders|ohne grenzen|sans front)\b/.test(lower)) return { type: "setBorders", value: false };
+  if (/\b(show borders|borders on|mit grenzen)\b/.test(lower)) return { type: "setBorders", value: true };
+  if (/\b(no map|hide satellite|ohne karte)\b/.test(lower)) return { type: "setBase", value: false };
+  if (/\b(show satellite|satellite on|mit karte)\b/.test(lower)) return { type: "setBase", value: true };
+  if (/\b(locate me|my location|mein standort|ma position|la mia posizione)\b/.test(lower)) return { type: "locate" };
+  return null;
 }
 
 function ensureEngine() {
@@ -689,37 +698,38 @@ async function askModel(text, pending) {
   onEngineProgress = null;
   pending.textContent = "…";
   const lang = (localStorage.getItem("geosolar-lang") || "en").slice(0, 2);
-  chatTurns.push({
+  const asked = {
     role: "user",
-    content: JSON.stringify({ lang, question: text, facts: packFacts() }),
-  });
-  if (chatTurns.length > 6) chatTurns.splice(0, chatTurns.length - 6);
-  let raw = "";
+    content: `Language: ${lang}\nQuestion: ${text}\nFacts: ${JSON.stringify(packFacts())}`,
+  };
+  const history = chatTurns.slice(-4);
+  let reply = "";
   try {
     const completion = await engine.chat.completions.create({
-      messages: [{ role: "system", content: ASK_SYSTEM }, ...chatTurns],
+      messages: [{ role: "system", content: ASK_SYSTEM }, ...history, asked],
       temperature: 0.2,
-      max_tokens: 280,
+      max_tokens: 180,
     });
-    raw = completion.choices[0].message.content || "";
+    reply = plainReply(completion.choices[0].message.content || "");
+    if (!reply) {
+      const retry = await engine.chat.completions.create({
+        messages: [
+          { role: "system", content: ASK_SYSTEM },
+          asked,
+          { role: "user", content: "Answer the question above in plain sentences only." },
+        ],
+        temperature: 0.1,
+        max_tokens: 160,
+      });
+      reply = plainReply(retry.choices[0].message.content || "");
+    }
   } catch (_) {
-    chatTurns.pop();
     return copy.askNoModel;
   }
-  chatTurns.push({ role: "assistant", content: raw });
-  const parsed = parseModelText(raw);
-  let action = parsed.action;
-  if (!action && /\b(open|show|go to|take me|offnen|ouvrir|apri)\b/i.test(text)) {
-    const cities = (window.GeoSolar.cityStats && window.GeoSolar.cityStats()) || [];
-    const named = cities.find((city) => text.toLowerCase().includes(city.name.toLowerCase()));
-    if (named) action = { type: "goCity", id: named.id };
-  }
-  applyAction(action);
-  let reply = parsed.reply;
-  if (action && action.type === "goCity" && /^gocity/i.test(reply)) {
-    const named = ((window.GeoSolar.cityStats && window.GeoSolar.cityStats()) || []).find((city) => city.id === action.id);
-    reply = named ? `Opened ${named.name}.` : reply;
-  }
+  if (!reply) return copy.askFailed;
+  chatTurns.push(asked, { role: "assistant", content: reply });
+  if (chatTurns.length > 6) chatTurns.splice(0, chatTurns.length - 6);
+  applyAction(commandFromQuestion(text));
   return escapeText(reply).replace(/\n/g, "<br>");
 }
 

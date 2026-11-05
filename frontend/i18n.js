@@ -88,6 +88,7 @@ const I18N = {
     askNoModel: "No language model is connected to this page, so I can’t answer as an assistant yet.",
     askNoGpu: "This browser can’t run the assistant. It needs WebGPU.",
     askLoading: (pct) => `Loading the assistant… ${pct}%`,
+    askFailed: "I couldn’t form an answer from the map. Ask that again.",
     askUnknown:
       "That's outside this map. I only answer questions about GeoSolar AI: Swiss roofs, the official class, the cities, and the controls on this page.",
     askOffTopicCity: (name) =>
@@ -299,6 +300,7 @@ const I18N = {
     askNoModel: "Mit dieser Seite ist kein Sprachmodell verbunden, deshalb kann ich noch nicht als Assistent antworten.",
     askNoGpu: "Dieser Browser kann den Assistenten nicht ausführen. Es braucht WebGPU.",
     askLoading: (pct) => `Assistent wird geladen… ${pct}%`,
+    askFailed: "Daraus konnte ich keine Antwort zur Karte bilden. Frag das noch einmal.",
     askUnknown:
       "Das liegt ausserhalb dieser Karte. Ich beantworte nur Fragen zu GeoSolar AI: Schweizer Dächer, die offizielle Klasse, die Städte und die Steuerung auf dieser Seite.",
     askOffTopicCity: (name) =>
@@ -510,6 +512,7 @@ const I18N = {
     askNoModel: "Aucun modèle de langue n’est relié à cette page, je ne peux pas encore répondre comme assistant.",
     askNoGpu: "Ce navigateur ne peut pas lancer l’assistant. Il lui faut WebGPU.",
     askLoading: (pct) => `Chargement de l’assistant… ${pct}%`,
+    askFailed: "Je n’ai pas pu former une réponse à partir de la carte. Repose la question.",
     askUnknown:
       "C’est en dehors de cette carte. Je ne réponds qu’aux questions sur GeoSolar AI : les toits suisses, la classe officielle, les villes et les commandes de cette page.",
     askOffTopicCity: (name) =>
@@ -721,6 +724,7 @@ const I18N = {
     askNoModel: "Nessun modello linguistico è collegato a questa pagina, quindi non posso ancora rispondere come assistente.",
     askNoGpu: "Questo browser non può eseguire l’assistente. Serve WebGPU.",
     askLoading: (pct) => `Caricamento dell’assistente… ${pct}%`,
+    askFailed: "Non sono riuscito a formare una risposta dalla mappa. Ripeti la domanda.",
     askUnknown:
       "Questo è fuori da questa mappa. Rispondo solo a domande su GeoSolar AI: i tetti svizzeri, la classe ufficiale, le città e i comandi di questa pagina.",
     askOffTopicCity: (name) =>
