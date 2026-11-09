@@ -60,3 +60,9 @@ Official `KLASSE` is assigned from irradiation. Putting radiation in the UI woul
 | `visuals/` | Country, city, and canton stills / GIFs |
 | `DATASET_REPORT.md` | Full FileGDB inspection |
 | `training/` | Optional pipeline that produced the 100k sample. The classifier is not served on the live map. |
+
+## Questions
+
+The panel answers questions about this map from the official counts already loaded: which city has the highest or lowest share of class 4–5 roofs, how two cities compare, what a class means, and what the current view is counting. It can open the city it names.
+
+The saved classifier remains available with `uvicorn app.main:app --port 8787` and `POST /predict`. The map does not use it to re-score the cadastre, and it does not return kWh.
