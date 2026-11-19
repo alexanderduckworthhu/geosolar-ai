@@ -63,6 +63,8 @@ Official `KLASSE` is assigned from irradiation. Putting radiation in the UI woul
 
 ## Questions
 
-The panel answers questions about this map from the official counts already loaded: which city has the highest or lowest share of class 4–5 roofs, how two cities compare, what a class means, and what the current view is counting. It can open the city it names.
+The chat on the map uses **Qwen2.5-1.5B Instruct**, a small language model that runs in the browser through [WebLLM](https://github.com/mlc-ai/web-llm). It needs WebGPU, which current Chrome and Edge have. The first question downloads the model; after that it stays in the browser. Nothing is sent to an API, and there is no key in the page.
 
-The saved classifier remains available with `uvicorn app.main:app --port 8787` and `POST /predict`. The map does not use it to re-score the cadastre, and it does not return kWh.
+Each question is sent to that model with the roof counts already loaded: city totals, class mix, slope, and what the current view is showing. The model writes the reply. A question that is not about the map is told it is outside the map. The chat can also open a city, switch the view, or set the class floor.
+
+This is not the scikit-learn classifier. The map does not use that classifier to recolor roofs, and it does not return kWh. The classifier remains available locally with `uvicorn app.main:app --port 8787` and `POST /predict`. `POST /ask` on that server is a separate local endpoint and is not what the public site uses.
