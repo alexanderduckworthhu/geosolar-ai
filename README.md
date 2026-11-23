@@ -63,8 +63,8 @@ Official `KLASSE` is assigned from irradiation. Putting radiation in the UI woul
 
 ## Questions
 
-The chat on the map uses **Qwen2.5-1.5B Instruct**, a small language model that runs in the browser through [WebLLM](https://github.com/mlc-ai/web-llm). It needs WebGPU, which current Chrome and Edge have. The first question downloads the model; after that it stays in the browser. Nothing is sent to an API, and there is no key in the page.
+The chat on the map uses **Qwen2.5-3B Instruct**, a language model that runs in the browser through [WebLLM](https://github.com/mlc-ai/web-llm). It needs WebGPU, which current Chrome and Edge have. The first question downloads the model; after that it stays in the browser. Nothing is sent to an API, and there is no key in the page.
 
-Each question is sent to that model with the roof counts already loaded: city totals, class mix, slope, and what the current view is showing. The model writes the reply. A question that is not about the map is told it is outside the map. The chat can also open a city, switch the view, or set the class floor.
+Each question is sent to that model with the roof counts already loaded. The model writes the reply and, when a request changes the page, chooses the control: open a city, switch language, change the view, the satellite, the borders, the class floor, or the colour mode. The page carries out that choice.
 
 This is not the scikit-learn classifier. The map does not use that classifier to recolor roofs, and it does not return kWh. The classifier remains available locally with `uvicorn app.main:app --port 8787` and `POST /predict`. `POST /ask` on that server is a separate local endpoint and is not what the public site uses.

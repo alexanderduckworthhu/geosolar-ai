@@ -629,14 +629,13 @@ function applyActions(actions) {
   });
 }
 
-const MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
-const ASK_SYSTEM = `You answer questions about the GeoSolar AI map of Swiss roofs. Every place named in the facts is on this map.
-Reply in the requested language, in one or two plain sentences. No JSON and no code.
-Copy every number exactly and keep it with the city it belongs to. roofs means roofs, not people. The percent is class 4 and class 5 together. mean class runs from 1 to 5. slope is degrees. Never mention kWh.
-When the question is marked short, use only the percent and the mean class.
-If the question is a joke or not about this map, reply only that it is outside this map.
-Answer only the current question. Never repeat an earlier reply.
-If the user asks to open a place, switch language, or change a control, the page does that itself. Confirm only that change.`;
+const MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
+const ASK_SYSTEM = `You control the GeoSolar AI map and answer questions about it.
+Return one JSON object and nothing else. Keys are reply and actions.
+actions is a list of objects. When the user wants the map or the page to change, put that change in actions. Showing or opening a place uses {"type":"goCity","id":"..."} with the id from the facts. Switching language uses {"type":"setLang","value":"en"} or de or fr or it. Write reply in the language after setLang. Leave actions empty only when nothing on the page should change.
+When actions is not empty, reply is one short confirmation and contains no roof numbers.
+Other object types: setView value hex or roofs, setBase value true or false, setBorders value true or false, setMode value mean or pct4, setFloor value 1 to 5, locate, zoomIn, zoomOut, search with query.
+Use only numbers that appear in the facts. Never mention kWh. Do not repeat an earlier answer.`;
 
 let enginePromise = null;
 let onEngineProgress = null;
@@ -839,16 +838,53 @@ function ensureEngine() {
   return enginePromise;
 }
 
-async function askModel(text, pending) {
-  const actions = commandsFromQuestion(text);
+function cleanActions(raw) {
+  const list = Array.isArray(raw) ? raw : raw && typeof raw === "object" ? [raw] : [];
+  const cities = new Set(((window.GeoSolar && window.GeoSolar.cityStats && window.GeoSolar.cityStats()) || []).map((city) => city.id));
+  cities.add("ch");
+  return list
+    .map((action) => {
+      if (!action || typeof action !== "object") return null;
+      const type = action.type;
+      if (type === "setLang" && ["en", "de", "fr", "it"].includes(action.value)) return { type, value: action.value };
+      if (type === "goCity" && cities.has(action.id)) return { type, id: action.id };
+      if (type === "setView" && ["hex", "roofs"].includes(action.value)) return { type, value: action.value };
+      if ((type === "setBase" || type === "setBorders") && typeof action.value === "boolean") return { type, value: action.value };
+      if (type === "setMode" && ["mean", "pct4"].includes(action.value)) return { type, value: action.value };
+      if (type === "setFloor" && Number(action.value) >= 1 && Number(action.value) <= 5) return { type, value: Number(action.value) };
+      if (type === "locate" || type === "zoomIn" || type === "zoomOut") return { type };
+      if (type === "search" && typeof action.query === "string" && action.query.trim()) return { type, query: action.query.trim().slice(0, 80) };
+      return null;
+    })
+    .filter(Boolean);
+}
+
+function parseDecision(content) {
+  let text = String(content || "").trim();
+  if (text.startsWith("```")) text = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  let parsed = null;
   try {
-    applyActions(actions);
-  } catch (_) {}
-  const copy = aiCopy();
-  if (actions.length && !wantsFacts(text)) {
-    const done = actionConfirm(actions);
-    if (done) return escapeText(done);
+    parsed = JSON.parse(text);
+  } catch (_) {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        parsed = JSON.parse(text.slice(start, end + 1));
+      } catch (__) {
+        parsed = null;
+      }
+    }
   }
+  if (!parsed || typeof parsed !== "object") return { reply: "", actions: [] };
+  return {
+    reply: String(parsed.reply || "").trim(),
+    actions: cleanActions(parsed.actions != null ? parsed.actions : parsed.action),
+  };
+}
+
+async function askModel(text, pending) {
+  const copy = aiCopy();
   onEngineProgress = (report) => {
     try {
       const pct = Math.max(0, Math.min(100, Math.round((report.progress || 0) * 100)));
@@ -864,53 +900,42 @@ async function askModel(text, pending) {
   }
   onEngineProgress = null;
   pending.textContent = "…";
-  const lang = (localStorage.getItem("geosolar-lang") || "en").slice(0, 2);
-  const short = /\b(simpl|short|brief|kurz|bref|breve|riassunt)\b/i.test(text)
-    ? "\nThis is a short question. Use only the percent and the mean class."
-    : "";
   const asked = {
     role: "user",
-    content: `Language: ${lang}\nQuestion: ${text}\n${factsText()}${short}\nAnswer only this question. Do not repeat an earlier reply.`,
+    content: `Question: ${text}\n${factsText()}`,
   };
-  let reply = "";
+  let decision = { reply: "", actions: [] };
   try {
+    if (engine.resetChat) engine.resetChat();
     const completion = await engine.chat.completions.create({
       messages: [{ role: "system", content: ASK_SYSTEM }, asked],
-      temperature: 0.2,
+      temperature: 0,
       max_tokens: 180,
     });
-    reply = plainReply(completion.choices[0].message.content || "");
-    if (!reply) {
+    decision = parseDecision(completion.choices[0].message.content || "");
+    if (!decision.reply) {
+      if (engine.resetChat) engine.resetChat();
       const retry = await engine.chat.completions.create({
         messages: [
           { role: "system", content: ASK_SYSTEM },
           asked,
-          { role: "user", content: "Answer the question above in plain sentences only." },
+          { role: "user", content: "Return the JSON object now." },
         ],
-        temperature: 0.1,
-        max_tokens: 160,
-      });
-      reply = plainReply(retry.choices[0].message.content || "");
-    }
-  } catch (_) {
-    try {
-      if (engine.resetChat) engine.resetChat();
-      const completion = await engine.chat.completions.create({
-        messages: [{ role: "system", content: ASK_SYSTEM }, asked],
-        temperature: 0.2,
+        temperature: 0,
         max_tokens: 180,
       });
-      reply = plainReply(completion.choices[0].message.content || "");
-    } catch (error) {
-      enginePromise = null;
-      if (engine.unload) engine.unload().catch(() => {});
-      return startFailure(copy, error);
+      decision = parseDecision(retry.choices[0].message.content || "");
     }
+  } catch (error) {
+    enginePromise = null;
+    if (engine.unload) engine.unload().catch(() => {});
+    return startFailure(copy, error);
   }
-  if (!reply) return copy.askFailed;
-  chatTurns.push({ role: "user", content: text }, { role: "assistant", content: reply });
-  if (chatTurns.length > 6) chatTurns.splice(0, chatTurns.length - 6);
-  return escapeText(reply).replace(/\n/g, "<br>");
+  try {
+    applyActions(decision.actions);
+  } catch (_) {}
+  if (!decision.reply) return copy.askFailed;
+  return escapeText(decision.reply).replace(/\n/g, "<br>");
 }
 
 const form = document.getElementById("ask-form");
