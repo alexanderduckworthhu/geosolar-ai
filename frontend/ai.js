@@ -639,12 +639,20 @@ function plainReply(content) {
   return text;
 }
 
+function cityFromQuestion(text) {
+  const folded = fold(text);
+  const alias = CITY_ALIASES.find(([name]) => folded.includes(name));
+  if (alias) return alias[1];
+  const cities = (window.GeoSolar && window.GeoSolar.cityStats && window.GeoSolar.cityStats()) || [];
+  const named = cities.find((city) => city.name && folded.includes(fold(city.name)));
+  return named ? named.id : null;
+}
+
 function commandFromQuestion(text) {
   const lower = text.toLowerCase();
-  const cities = (window.GeoSolar && window.GeoSolar.cityStats && window.GeoSolar.cityStats()) || [];
   if (/\b(open|show|go to|take me|offnen|ouvrir|apri|mostra)\b/.test(lower)) {
-    const named = cities.find((city) => lower.includes(city.name.toLowerCase()));
-    if (named) return { type: "goCity", id: named.id };
+    const id = cityFromQuestion(text);
+    if (id) return { type: "goCity", id };
   }
   const floor = lower.match(/\b(?:floor|klasse|classe|classe)\s*(?:to|auf|a|à)?\s*([1-5])\b/);
   if (floor) return { type: "setFloor", value: Number(floor[1]) };
@@ -704,6 +712,14 @@ async function loadWebllm() {
   }
 }
 
+function startFailure(copy, error) {
+  const detail = String((error && error.message) || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+  return escapeText(detail ? `${copy.askNoModel} (${detail})` : copy.askNoModel);
+}
+
 function ensureEngine() {
   if (!navigator.gpu) {
     const error = new Error("gpu");
@@ -713,11 +729,17 @@ function ensureEngine() {
   if (!enginePromise) {
     enginePromise = loadWebllm()
       .then(async (webllm) => {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          const error = new Error("gpu");
+          error.code = "gpu";
+          throw error;
+        }
         try {
           return await webllm.CreateMLCEngine(MODEL_ID, engineConfig());
         } catch (error) {
           await webllm.deleteModelAllInfoInCache(MODEL_ID).catch(() => {});
-          return webllm.CreateMLCEngine(MODEL_ID, engineConfig());
+          throw error;
         }
       })
       .catch((error) => {
@@ -730,16 +752,21 @@ function ensureEngine() {
 
 async function askModel(text, pending) {
   const copy = aiCopy();
+  try {
+    applyAction(commandFromQuestion(text));
+  } catch (_) {}
   onEngineProgress = (report) => {
-    const pct = Math.max(0, Math.min(100, Math.round((report.progress || 0) * 100)));
-    pending.textContent = copy.askLoading(pct);
+    try {
+      const pct = Math.max(0, Math.min(100, Math.round((report.progress || 0) * 100)));
+      pending.textContent = typeof copy.askLoading === "function" ? copy.askLoading(pct) : `Loading the assistant… ${pct}%`;
+    } catch (_) {}
   };
   let engine;
   try {
     engine = await ensureEngine();
   } catch (error) {
     onEngineProgress = null;
-    return error && error.code === "gpu" ? copy.askNoGpu : copy.askNoModel;
+    return error && error.code === "gpu" ? copy.askNoGpu : startFailure(copy, error);
   }
   onEngineProgress = null;
   pending.textContent = "…";
@@ -781,16 +808,15 @@ async function askModel(text, pending) {
         max_tokens: 180,
       });
       reply = plainReply(completion.choices[0].message.content || "");
-    } catch (__) {
+    } catch (error) {
       enginePromise = null;
       if (engine.unload) engine.unload().catch(() => {});
-      return copy.askNoModel;
+      return startFailure(copy, error);
     }
   }
   if (!reply) return copy.askFailed;
   chatTurns.push({ role: "user", content: text }, { role: "assistant", content: reply });
   if (chatTurns.length > 6) chatTurns.splice(0, chatTurns.length - 6);
-  applyAction(commandFromQuestion(text));
   return escapeText(reply).replace(/\n/g, "<br>");
 }
 
