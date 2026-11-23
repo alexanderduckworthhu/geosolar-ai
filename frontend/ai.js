@@ -19,6 +19,10 @@ const CITY_ALIASES = [
   ["lucerna", "lu"],
   ["geneve", "ge"],
   ["geneva", "ge"],
+  ["switzerland", "ch"],
+  ["schweiz", "ch"],
+  ["suisse", "ch"],
+  ["svizzera", "ch"],
   ["ginevra", "ge"],
   ["genf", "ge"],
   ["zurich", "zh"],
@@ -601,15 +605,28 @@ function packFacts() {
   };
 }
 
-function applyAction(action) {
-  if (!action || !window.GeoSolar) return;
-  if (action.type === "goCity" && action.id) window.GeoSolar.goCity(action.id);
-  if (action.type === "setFloor") window.GeoSolar.setFloor(action.value);
-  if (action.type === "setView") window.GeoSolar.setViewMode(action.value);
-  if (action.type === "setBase") window.GeoSolar.setBase(action.value);
-  if (action.type === "setBorders") window.GeoSolar.setBorders(action.value);
-  if (action.type === "setMode") window.GeoSolar.setMode(action.value);
-  if (action.type === "locate") window.GeoSolar.locateMe();
+function applyActions(actions) {
+  (actions || []).forEach((action) => {
+    if (!action || !window.GeoSolar) return;
+    if (action.type === "setLang" && action.value) {
+      window.GeoSolar.setLang(action.value);
+      askLabels();
+    }
+    if (action.type === "goCity" && action.id) window.GeoSolar.goCity(action.id);
+    if (action.type === "setFloor") window.GeoSolar.setFloor(action.value);
+    if (action.type === "setView") window.GeoSolar.setViewMode(action.value);
+    if (action.type === "setBase") window.GeoSolar.setBase(action.value);
+    if (action.type === "setBorders") window.GeoSolar.setBorders(action.value);
+    if (action.type === "setMode") window.GeoSolar.setMode(action.value);
+    if (action.type === "locate") window.GeoSolar.locateMe();
+    if (action.type === "zoomIn") window.GeoSolar.zoomInCity();
+    if (action.type === "zoomOut") window.GeoSolar.zoomOutFull();
+    if (action.type === "search" && action.query && window.GeoSolar.search) {
+      const input = document.getElementById("search-input");
+      if (input) input.value = action.query;
+      window.GeoSolar.search(action.query);
+    }
+  });
 }
 
 const MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
@@ -617,7 +634,8 @@ const ASK_SYSTEM = `You answer questions about the GeoSolar AI map of Swiss roof
 Reply in the requested language, in one or two plain sentences. No JSON and no code.
 Copy every number exactly and keep it with the city it belongs to. roofs means roofs, not people. The percent is class 4 and class 5 together. mean class runs from 1 to 5. slope is degrees. Never mention kWh.
 When the question is marked short, use only the percent and the mean class.
-If the question is a joke or not about this map, reply only that it is outside this map.`;
+If the question is a joke or not about this map, reply only that it is outside this map.
+If the user asks to open a place, switch language, or change a control, the page does that itself. Confirm it in one short sentence.`;
 
 let enginePromise = null;
 let onEngineProgress = null;
@@ -639,31 +657,72 @@ function plainReply(content) {
   return text;
 }
 
+function hasWord(folded, name) {
+  return new RegExp(`\\b${name}\\b`).test(folded);
+}
+
 function cityFromQuestion(text) {
   const folded = fold(text);
-  const alias = CITY_ALIASES.find(([name]) => folded.includes(name));
+  const alias = CITY_ALIASES.find(([name]) => hasWord(folded, name));
   if (alias) return alias[1];
   const cities = (window.GeoSolar && window.GeoSolar.cityStats && window.GeoSolar.cityStats()) || [];
-  const named = cities.find((city) => city.name && folded.includes(fold(city.name)));
+  const named = cities.find((city) => city.name && hasWord(folded, fold(city.name)));
   return named ? named.id : null;
 }
 
-function commandFromQuestion(text) {
-  const lower = text.toLowerCase();
-  if (/\b(open|show|go to|take me|offnen|ouvrir|apri|mostra)\b/.test(lower)) {
-    const id = cityFromQuestion(text);
-    if (id) return { type: "goCity", id };
-  }
-  const floor = lower.match(/\b(?:floor|klasse|classe|classe)\s*(?:to|auf|a|à)?\s*([1-5])\b/);
-  if (floor) return { type: "setFloor", value: Number(floor[1]) };
-  if (/\b(switch to hex|hex view|show the hexes|wabenansicht)\b/.test(lower)) return { type: "setView", value: "hex" };
-  if (/\b(switch to roofs|roof view|each roof|show the roofs)\b/.test(lower)) return { type: "setView", value: "roofs" };
-  if (/\b(no borders|hide borders|ohne grenzen|sans front)\b/.test(lower)) return { type: "setBorders", value: false };
-  if (/\b(show borders|borders on|mit grenzen)\b/.test(lower)) return { type: "setBorders", value: true };
-  if (/\b(no map|hide satellite|ohne karte)\b/.test(lower)) return { type: "setBase", value: false };
-  if (/\b(show satellite|satellite on|mit karte)\b/.test(lower)) return { type: "setBase", value: true };
-  if (/\b(locate me|my location|mein standort|ma position|la mia posizione)\b/.test(lower)) return { type: "locate" };
+function languageFromQuestion(folded) {
+  const asked = /\b(switch|change|set|use|language|langue|sprache|lingua|passe|passer|wechsel|wechsle|cambia|metti)\b/.test(folded);
+  if (!asked) return null;
+  if (/\b(french|francais|franzosisch|francese)\b/.test(folded)) return "fr";
+  if (/\b(german|deutsch|allemand|tedesco|allemand)\b/.test(folded)) return "de";
+  if (/\b(italian|italiano|italienisch|italien)\b/.test(folded)) return "it";
+  if (/\b(english|anglais|englisch|inglese)\b/.test(folded)) return "en";
   return null;
+}
+
+function commandsFromQuestion(text) {
+  const folded = fold(text);
+  const actions = [];
+  const lang = languageFromQuestion(folded);
+  if (lang) actions.push({ type: "setLang", value: lang });
+  const control = /\b(switch|change|set|use|show|open|turn|hide|view|passe|wechsel|cambia|metti|zeig|montre|ouvre|offne|offnen)\b/.test(folded);
+  if (control && /\b(each roof|roof view|roofs view|individual|einzel|toits|tetti|dach)\b/.test(folded)) {
+    actions.push({ type: "setView", value: "roofs" });
+  } else if (control && /\b(hex|hexagon|waben|neighbourhood|neighborhood|nachbar|quartier)\b/.test(folded)) {
+    actions.push({ type: "setView", value: "hex" });
+  }
+  if (/\b(border|borders|grenze|grenzen|frontiere|frontieres|confine|confini)\b/.test(folded)) {
+    if (/\b(off|hide|no|ohne|sans|senza|disable|remove)\b/.test(folded)) actions.push({ type: "setBorders", value: false });
+    else if (/\b(on|show|with|mit|avec|con|enable)\b/.test(folded)) actions.push({ type: "setBorders", value: true });
+  }
+  if (/\b(satellite|basemap|the map|karte|carte|mappa)\b/.test(folded)) {
+    if (/\b(off|hide|no|ohne|sans|senza|disable)\b/.test(folded)) actions.push({ type: "setBase", value: false });
+    else if (/\b(on|show|with|mit|avec|enable)\b/.test(folded)) actions.push({ type: "setBase", value: true });
+  }
+  if (/\b(mean class|average class|mittelwert|moyenne|classe moyenne)\b/.test(folded) && control) {
+    actions.push({ type: "setMode", value: "mean" });
+  } else if (/\b(class 4|class 4 5|excellent share|pct4)\b/.test(folded) && control) {
+    actions.push({ type: "setMode", value: "pct4" });
+  }
+  const floor = folded.match(/\b(?:floor|klasse|classe)\s*(?:to|auf|a)?\s*([1-5])\b/);
+  if (floor) actions.push({ type: "setFloor", value: Number(floor[1]) });
+  if (/\b(locate me|my location|where am i|mein standort|ma position|la mia posizione|localise|trovami)\b/.test(folded)) {
+    actions.push({ type: "locate" });
+  }
+  const travel = /\b(open|show|go|take|jump|bring|zoom|zeig|montre|apri|mostra|ouvre|offne|offnen)\b/.test(folded);
+  const cityId = cityFromQuestion(text);
+  if (/\b(zoom out|zoom back|whole country|whole switzerland|ganze schweiz|toute la suisse)\b/.test(folded) && !cityId) {
+    actions.push({ type: "zoomOut" });
+  } else if (/\b(zoom in|closer|naher|rapproche)\b/.test(folded) && !cityId) {
+    actions.push({ type: "zoomIn" });
+  }
+  if (travel && cityId) actions.push({ type: "goCity", id: cityId });
+  const search = text.match(/\b(?:search|find|suche|cherche|cerca)\s+(?:for\s+)?(.+)$/i);
+  if (search && !cityId) {
+    const query = search[1].trim().replace(/[?.!]+$/, "");
+    if (query.length > 1) actions.push({ type: "search", query });
+  }
+  return actions;
 }
 
 function factsText() {
@@ -753,7 +812,7 @@ function ensureEngine() {
 async function askModel(text, pending) {
   const copy = aiCopy();
   try {
-    applyAction(commandFromQuestion(text));
+    applyActions(commandsFromQuestion(text));
   } catch (_) {}
   onEngineProgress = (report) => {
     try {

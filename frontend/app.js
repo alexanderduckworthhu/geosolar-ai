@@ -1896,4 +1896,5 @@ window.GeoSolar = {
     );
     paint();
   },
+  search: runSearch,
 };
