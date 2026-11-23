@@ -635,7 +635,8 @@ Reply in the requested language, in one or two plain sentences. No JSON and no c
 Copy every number exactly and keep it with the city it belongs to. roofs means roofs, not people. The percent is class 4 and class 5 together. mean class runs from 1 to 5. slope is degrees. Never mention kWh.
 When the question is marked short, use only the percent and the mean class.
 If the question is a joke or not about this map, reply only that it is outside this map.
-If the user asks to open a place, switch language, or change a control, the page does that itself. Confirm it in one short sentence.`;
+Answer only the current question. Never repeat an earlier reply.
+If the user asks to open a place, switch language, or change a control, the page does that itself. Confirm only that change.`;
 
 let enginePromise = null;
 let onEngineProgress = null;
@@ -725,6 +726,35 @@ function commandsFromQuestion(text) {
   return actions;
 }
 
+function wantsFacts(text) {
+  const folded = fold(text);
+  return /\b(stat|stats|number|numbers|how many|compare|versus|mean|slope|percent|highest|lowest|which|what|why|tell me|count|roofs)\b/.test(folded);
+}
+
+function actionConfirm(actions) {
+  const copy = aiCopy();
+  const cities = (window.GeoSolar && window.GeoSolar.cityStats && window.GeoSolar.cityStats()) || [];
+  const lines = [];
+  actions.forEach((action) => {
+    if (action.type === "setLang" && copy.askNowLang) lines.push(copy.askNowLang);
+    if (action.type === "goCity" && copy.askOpened) {
+      const city = cities.find((item) => item.id === action.id);
+      const button = document.querySelector(`#city-row button[data-city="${action.id}"]`);
+      lines.push(copy.askOpened((city && city.name) || (button && button.textContent) || action.id));
+    }
+    if (action.type === "setView") lines.push(action.value === "roofs" ? copy.askViewRoofs : copy.askViewHex);
+    if (action.type === "setBase") lines.push(action.value ? copy.askBaseOn : copy.askBaseOff);
+    if (action.type === "setBorders") lines.push(action.value ? copy.askBordersOn : copy.askBordersOff);
+    if (action.type === "setMode") lines.push(action.value === "pct4" ? copy.askModePct : copy.askModeMean);
+    if (action.type === "setFloor" && copy.askFloor) lines.push(copy.askFloor(action.value));
+    if (action.type === "locate") lines.push(copy.askLocate);
+    if (action.type === "zoomIn") lines.push(copy.askZoomIn);
+    if (action.type === "zoomOut") lines.push(copy.askZoomOut);
+    if (action.type === "search" && copy.askSearch) lines.push(copy.askSearch(action.query));
+  });
+  return lines.filter(Boolean).join(" ");
+}
+
 function factsText() {
   const facts = packFacts();
   const line = (name, row) =>
@@ -810,10 +840,15 @@ function ensureEngine() {
 }
 
 async function askModel(text, pending) {
-  const copy = aiCopy();
+  const actions = commandsFromQuestion(text);
   try {
-    applyActions(commandsFromQuestion(text));
+    applyActions(actions);
   } catch (_) {}
+  const copy = aiCopy();
+  if (actions.length && !wantsFacts(text)) {
+    const done = actionConfirm(actions);
+    if (done) return escapeText(done);
+  }
   onEngineProgress = (report) => {
     try {
       const pct = Math.max(0, Math.min(100, Math.round((report.progress || 0) * 100)));
@@ -835,13 +870,12 @@ async function askModel(text, pending) {
     : "";
   const asked = {
     role: "user",
-    content: `Language: ${lang}\nQuestion: ${text}\n${factsText()}${short}\nAnswer the question.`,
+    content: `Language: ${lang}\nQuestion: ${text}\n${factsText()}${short}\nAnswer only this question. Do not repeat an earlier reply.`,
   };
-  const history = chatTurns.slice(-2);
   let reply = "";
   try {
     const completion = await engine.chat.completions.create({
-      messages: [{ role: "system", content: ASK_SYSTEM }, ...history, asked],
+      messages: [{ role: "system", content: ASK_SYSTEM }, asked],
       temperature: 0.2,
       max_tokens: 180,
     });
