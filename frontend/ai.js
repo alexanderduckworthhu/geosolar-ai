@@ -632,7 +632,10 @@ function applyActions(actions) {
 const MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
 const ASK_SYSTEM = `You control the GeoSolar AI map and answer questions about it.
 Return one JSON object and nothing else. Keys are reply and actions.
-actions is a list of objects. When the user wants the map or the page to change, put that change in actions. Showing or opening a place uses {"type":"goCity","id":"..."} with the id from the facts. Switching language uses {"type":"setLang","value":"en"} or de or fr or it. Write reply in the language after setLang. Leave actions empty only when nothing on the page should change.
+actions is a list of objects. When the user wants the map or the page to change, put that change in actions. Showing or opening a place uses {"type":"goCity","id":"..."} with the id from the facts.
+Switching language uses {"type":"setLang","value":"fr"} for French, {"type":"setLang","value":"de"} for German, {"type":"setLang","value":"it"} for Italian or italien, or {"type":"setLang","value":"en"} for English. If the reply says the language changed, that setLang object must be in actions. An empty actions list leaves the page language unchanged. Write reply in the new language.
+A question that only asks for statistics changes nothing. actions is empty.
+Leave actions empty only when nothing on the page should change.
 When actions is not empty, reply is one short confirmation and contains no roof numbers.
 Other object types: setView value hex or roofs, setBase value true or false, setBorders value true or false, setMode value mean or pct4, setFloor value 1 to 5, locate, zoomIn, zoomOut, search with query.
 Use only numbers that appear in the facts. Never mention kWh. Do not repeat an earlier answer.`;
@@ -838,6 +841,25 @@ function ensureEngine() {
   return enginePromise;
 }
 
+function langCode(value) {
+  const folded = fold(String(value || ""));
+  if (["fr", "french", "francais", "francaise"].includes(folded)) return "fr";
+  if (["de", "german", "deutsch", "allemand"].includes(folded)) return "de";
+  if (["it", "italian", "italiano", "italien", "italienisch"].includes(folded)) return "it";
+  if (["en", "english", "anglais", "englisch", "inglese"].includes(folded)) return "en";
+  return null;
+}
+
+function langAnnounced(reply) {
+  const folded = fold(reply);
+  if (!/\b(activee|activated|activation|switched|changement|changed|langue|lingua|sprache|language)\b/.test(folded)) return null;
+  if (/\b(french|francais|francaise)\b/.test(folded)) return "fr";
+  if (/\b(german|deutsch|allemand)\b/.test(folded)) return "de";
+  if (/\b(italian|italiano|italien|italienisch)\b/.test(folded)) return "it";
+  if (/\b(english|anglais|englisch|inglese)\b/.test(folded)) return "en";
+  return null;
+}
+
 function cleanActions(raw) {
   const list = Array.isArray(raw) ? raw : raw && typeof raw === "object" ? [raw] : [];
   const cities = new Set(((window.GeoSolar && window.GeoSolar.cityStats && window.GeoSolar.cityStats()) || []).map((city) => city.id));
@@ -846,7 +868,10 @@ function cleanActions(raw) {
     .map((action) => {
       if (!action || typeof action !== "object") return null;
       const type = action.type;
-      if (type === "setLang" && ["en", "de", "fr", "it"].includes(action.value)) return { type, value: action.value };
+      if (type === "setLang") {
+        const code = langCode(action.value);
+        if (code) return { type, value: code };
+      }
       if (type === "goCity" && cities.has(action.id)) return { type, id: action.id };
       if (type === "setView" && ["hex", "roofs"].includes(action.value)) return { type, value: action.value };
       if ((type === "setBase" || type === "setBorders") && typeof action.value === "boolean") return { type, value: action.value };
@@ -877,10 +902,13 @@ function parseDecision(content) {
     }
   }
   if (!parsed || typeof parsed !== "object") return { reply: "", actions: [] };
-  return {
-    reply: String(parsed.reply || "").trim(),
-    actions: cleanActions(parsed.actions != null ? parsed.actions : parsed.action),
-  };
+  const reply = String(parsed.reply || "").trim();
+  let actions = cleanActions(parsed.actions != null ? parsed.actions : parsed.action);
+  if (!actions.some((action) => action.type === "setLang")) {
+    const announced = langAnnounced(reply);
+    if (announced) actions = [{ type: "setLang", value: announced }].concat(actions);
+  }
+  return { reply, actions };
 }
 
 async function askModel(text, pending) {
