@@ -688,6 +688,22 @@ function factsText() {
     .join("\n");
 }
 
+function engineConfig() {
+  return {
+    initProgressCallback(report) {
+      if (onEngineProgress) onEngineProgress(report);
+    },
+  };
+}
+
+async function loadWebllm() {
+  try {
+    return await import("https://esm.sh/@mlc-ai/web-llm@0.2.79");
+  } catch (_) {
+    return import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm");
+  }
+}
+
 function ensureEngine() {
   if (!navigator.gpu) {
     const error = new Error("gpu");
@@ -695,14 +711,15 @@ function ensureEngine() {
     return Promise.reject(error);
   }
   if (!enginePromise) {
-    enginePromise = import("https://esm.sh/@mlc-ai/web-llm@0.2.79")
-      .then(({ CreateMLCEngine }) =>
-        CreateMLCEngine(MODEL_ID, {
-          initProgressCallback(report) {
-            if (onEngineProgress) onEngineProgress(report);
-          },
-        })
-      )
+    enginePromise = loadWebllm()
+      .then(async (webllm) => {
+        try {
+          return await webllm.CreateMLCEngine(MODEL_ID, engineConfig());
+        } catch (error) {
+          await webllm.deleteModelAllInfoInCache(MODEL_ID).catch(() => {});
+          return webllm.CreateMLCEngine(MODEL_ID, engineConfig());
+        }
+      })
       .catch((error) => {
         enginePromise = null;
         throw error;
@@ -756,10 +773,22 @@ async function askModel(text, pending) {
       reply = plainReply(retry.choices[0].message.content || "");
     }
   } catch (_) {
-    return copy.askNoModel;
+    try {
+      if (engine.resetChat) engine.resetChat();
+      const completion = await engine.chat.completions.create({
+        messages: [{ role: "system", content: ASK_SYSTEM }, asked],
+        temperature: 0.2,
+        max_tokens: 180,
+      });
+      reply = plainReply(completion.choices[0].message.content || "");
+    } catch (__) {
+      enginePromise = null;
+      if (engine.unload) engine.unload().catch(() => {});
+      return copy.askNoModel;
+    }
   }
   if (!reply) return copy.askFailed;
-  chatTurns.push(asked, { role: "assistant", content: reply });
+  chatTurns.push({ role: "user", content: text }, { role: "assistant", content: reply });
   if (chatTurns.length > 6) chatTurns.splice(0, chatTurns.length - 6);
   applyAction(commandFromQuestion(text));
   return escapeText(reply).replace(/\n/g, "<br>");

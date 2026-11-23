@@ -85,7 +85,7 @@ const I18N = {
     askOpen: (name) => `Open ${name}`,
     askHelp:
       "Ask for a city’s stats, which city is highest, or tell me to open a city, switch the view, or set the class floor.",
-    askNoModel: "No language model is connected to this page, so I can’t answer as an assistant yet.",
+    askNoModel: "The assistant couldn’t start. Ask again and it will reload.",
     askNoGpu: "This browser can’t run the assistant. It needs WebGPU.",
     askLoading: (pct) => `Loading the assistant… ${pct}%`,
     askFailed: "I couldn’t form an answer from the map. Ask that again.",
@@ -297,7 +297,7 @@ const I18N = {
     askOpen: (name) => `${name} öffnen`,
     askHelp:
       "Frag nach den Zahlen einer Stadt, welche Stadt am höchsten liegt, oder sag, eine Stadt zu öffnen, die Ansicht zu wechseln oder die Klassenschwelle zu setzen.",
-    askNoModel: "Mit dieser Seite ist kein Sprachmodell verbunden, deshalb kann ich noch nicht als Assistent antworten.",
+    askNoModel: "Der Assistent konnte nicht starten. Frag noch einmal, dann lädt er neu.",
     askNoGpu: "Dieser Browser kann den Assistenten nicht ausführen. Es braucht WebGPU.",
     askLoading: (pct) => `Assistent wird geladen… ${pct}%`,
     askFailed: "Daraus konnte ich keine Antwort zur Karte bilden. Frag das noch einmal.",
@@ -509,7 +509,7 @@ const I18N = {
     askOpen: (name) => `Ouvrir ${name}`,
     askHelp:
       "Demandez les chiffres d’une ville, quelle ville est la plus haute, ou dites d’ouvrir une ville, de changer la vue ou de régler le seuil de classe.",
-    askNoModel: "Aucun modèle de langue n’est relié à cette page, je ne peux pas encore répondre comme assistant.",
+    askNoModel: "L’assistant n’a pas pu démarrer. Repose la question, il se rechargera.",
     askNoGpu: "Ce navigateur ne peut pas lancer l’assistant. Il lui faut WebGPU.",
     askLoading: (pct) => `Chargement de l’assistant… ${pct}%`,
     askFailed: "Je n’ai pas pu former une réponse à partir de la carte. Repose la question.",
@@ -721,7 +721,7 @@ const I18N = {
     askOpen: (name) => `Apri ${name}`,
     askHelp:
       "Chiedi le statistiche di una città, quale città è la più alta, oppure di aprire una città, cambiare vista o impostare la soglia di classe.",
-    askNoModel: "Nessun modello linguistico è collegato a questa pagina, quindi non posso ancora rispondere come assistente.",
+    askNoModel: "L’assistente non è riuscito ad avviarsi. Ripeti la domanda e si ricaricherà.",
     askNoGpu: "Questo browser non può eseguire l’assistente. Serve WebGPU.",
     askLoading: (pct) => `Caricamento dell’assistente… ${pct}%`,
     askFailed: "Non sono riuscito a formare una risposta dalla mappa. Ripeti la domanda.",
