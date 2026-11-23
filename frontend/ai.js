@@ -906,29 +906,13 @@ async function askModel(text, pending) {
   };
   let decision = { reply: "", actions: [] };
   try {
-    if (engine.resetChat) engine.resetChat();
     const completion = await engine.chat.completions.create({
       messages: [{ role: "system", content: ASK_SYSTEM }, asked],
       temperature: 0,
       max_tokens: 180,
     });
     decision = parseDecision(completion.choices[0].message.content || "");
-    if (!decision.reply) {
-      if (engine.resetChat) engine.resetChat();
-      const retry = await engine.chat.completions.create({
-        messages: [
-          { role: "system", content: ASK_SYSTEM },
-          asked,
-          { role: "user", content: "Return the JSON object now." },
-        ],
-        temperature: 0,
-        max_tokens: 180,
-      });
-      decision = parseDecision(retry.choices[0].message.content || "");
-    }
   } catch (error) {
-    enginePromise = null;
-    if (engine.unload) engine.unload().catch(() => {});
     return startFailure(copy, error);
   }
   try {
@@ -936,6 +920,17 @@ async function askModel(text, pending) {
   } catch (_) {}
   if (!decision.reply) return copy.askFailed;
   return escapeText(decision.reply).replace(/\n/g, "<br>");
+}
+
+let askChain = Promise.resolve();
+
+function enqueueAsk(task) {
+  const run = askChain.then(task, task);
+  askChain = run.then(
+    () => {},
+    () => {}
+  );
+  return run;
 }
 
 const form = document.getElementById("ask-form");
@@ -951,7 +946,7 @@ if (form) {
     pending.className = "chat-msg bot";
     pending.textContent = "…";
     document.getElementById("chat-log").appendChild(pending);
-    const html = await askModel(text, pending);
+    const html = await enqueueAsk(() => askModel(text, pending));
     pending.remove();
     appendMessage("bot", html);
   });
